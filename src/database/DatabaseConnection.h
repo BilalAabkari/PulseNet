@@ -5,6 +5,7 @@
 class DatabaseConnection {
 public:
   DatabaseConnection(std::string host, std::string port, std::string password);
+  ~DatabaseConnection();
 
   bool isConnected() const;
 

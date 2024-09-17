@@ -14,6 +14,13 @@ DatabaseConnection::DatabaseConnection(std::string host, std::string port,
   m_password = password;
 }
 
+DatabaseConnection::~DatabaseConnection() {
+  if (m_conn) {
+    PQfinish(m_conn);
+    m_conn = nullptr;
+  }
+}
+
 bool DatabaseConnection::connect() {
 
   bool should_create_database = false;

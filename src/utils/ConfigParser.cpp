@@ -18,6 +18,7 @@ ConfigParser::ConfigParser() {
   }
 }
 
+
 void ConfigParser::read() {
   std::string line;
   while (std::getline(m_config_file, line)) {
