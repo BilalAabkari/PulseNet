@@ -1,21 +1,22 @@
 ﻿#include "PulseNet.h"
 #include "utils/ConfigParser.h"
-#include "database/DatabaseConnection.h"
+#include "database/DBManager.h"
+#include <locale>
+#include <iostream>
+#include <codecvt>
 
 int main() {
+  std::locale::global(std::locale("en_US.UTF-8"));
+  std::cout.imbue(std::locale());
+  std::cerr.imbue(std::locale());
 
   ConfigParser parser;
   parser.read();
   std::cout << parser;
 
-  DatabaseKeys db_config = parser.getDatabaseConfig();
-  DatabaseConnection db(db_config.database_host, db_config.database_port,
-                        db_config.database_password);
-
-  bool should_create_db = db.connect();
-  if (db.isConnected()) {
-    std::cout << "Connected to database successfuly\n";
-  }
+  DBManager db_manager(parser.getDatabaseConfig());
+  db_manager.connectToDb();
+  db_manager.init();
 
   return 0;
 }

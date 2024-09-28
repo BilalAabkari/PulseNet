@@ -3,21 +3,28 @@
 
 const std::string DatabaseConnection::DEFAULT_HOST = "localhost";
 const std::string DatabaseConnection::DEFAULT_DATABASE_NAME = "postgres";
-const std::string DatabaseConnection::PULSE_NET_DATABASE_NAME = "pulsenet_db";
+const std::string DatabaseConnection::PULSE_NET_DATABASE_NAME = "pulsenet";
 const std::string DatabaseConnection::DEFAULT_PORT = "5432";
 const std::string DatabaseConnection::DEFAULT_USER = "postgres";
+
+DatabaseConnection::DatabaseConnection() {
+  m_host = DEFAULT_HOST;
+  m_port = DEFAULT_PORT;
+  m_password = "root";
+  m_conn = NULL;
+}
 
 DatabaseConnection::DatabaseConnection(std::string host, std::string port,
                                        std::string password) {
   m_host = host;
   m_port = port;
   m_password = password;
+  m_conn = NULL;
 }
 
 DatabaseConnection::~DatabaseConnection() {
   if (m_conn) {
     PQfinish(m_conn);
-    m_conn = nullptr;
   }
 }
 
@@ -56,3 +63,5 @@ bool DatabaseConnection::connect() {
 bool DatabaseConnection::isConnected() const {
   return PQstatus(m_conn) == CONNECTION_OK;
 }
+
+PGconn *DatabaseConnection::getConn() const { return m_conn; }

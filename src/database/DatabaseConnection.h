@@ -4,10 +4,12 @@
 
 class DatabaseConnection {
 public:
+  DatabaseConnection();
   DatabaseConnection(std::string host, std::string port, std::string password);
   ~DatabaseConnection();
 
   bool isConnected() const;
+  PGconn *getConn() const;
 
   bool connect();
 
