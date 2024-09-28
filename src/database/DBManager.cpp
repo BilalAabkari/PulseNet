@@ -45,9 +45,12 @@ void DBManager::createPulseNetDB() {
 void DBManager::createNodeEntityTable() {
   std::string query = "CREATE TABLE IF NOT EXISTS tbl_node_entity ("
                       "id SERIAL PRIMARY KEY, "
+                      "identifier VARCHAR(50) NOT NULL UNIQUE,"
+                      "password VARCHAR(255) NOT NULL,"
                       "status VARCHAR(50) NOT NULL, "
                       "ip_address INET NOT NULL"
                       ");";
+
   PGresult *res = PQexecParams(m_db_conn.getConn(), query.c_str(), 0, NULL,
                                NULL, NULL, NULL, 0);
 
@@ -71,9 +74,12 @@ void DBManager::createChannelTable() {
 }
 
 void DBManager::createChannelNodeTable() {
-  std::string query = "CREATE TABLE IF NOT EXISTS tbl_channel_nodes ("
-                      "id SERIAL PRIMARY KEY "
-                      ");";
+  std::string query =
+      "CREATE TABLE IF NOT EXISTS tbl_channel_nodes ("
+      "id SERIAL PRIMARY KEY,"
+      "channel_id INT REFERENCES tbl_channel(id) ON DELETE CASCADE, "
+      "node_entity_id INT REFERENCES tbl_node_entity(id) ON DELETE CASCADE"
+      ");";
   PGresult *res = PQexecParams(m_db_conn.getConn(), query.c_str(), 0, NULL,
                                NULL, NULL, NULL, 0);
 
