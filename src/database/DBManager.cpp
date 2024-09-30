@@ -3,7 +3,7 @@
 #include <iostream>
 #include <libpq-fe.h>
 
-DBManager::DBManager(DatabaseKeys config) {
+DBManager::DBManager(const DatabaseKeys &config) {
   m_db_config = config;
   m_db_conn =
       DatabaseConnection(m_db_config.database_host, m_db_config.database_port,
@@ -33,13 +33,7 @@ void DBManager::init() {
 
 void DBManager::createPulseNetDB() {
   std::string query = "CREATE DATABASE pulsenet;";
-  PGresult *res = PQexecParams(m_db_conn.getConn(), query.c_str(), 0, NULL,
-                               NULL, NULL, NULL, 0);
-  ExecStatusType a = PQresultStatus(res);
-  if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-    std::string error_message = PQerrorMessage(m_db_conn.getConn());
-    std::cerr << error_message + '\n';
-  }
+  executeRawSQLQuery(query);
 }
 
 void DBManager::createNodeEntityTable() {
@@ -51,26 +45,14 @@ void DBManager::createNodeEntityTable() {
                       "ip_address INET NOT NULL"
                       ");";
 
-  PGresult *res = PQexecParams(m_db_conn.getConn(), query.c_str(), 0, NULL,
-                               NULL, NULL, NULL, 0);
-
-  if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-    std::string error_message = PQerrorMessage(m_db_conn.getConn());
-    std::cerr << error_message + '\n';
-  }
+  executeRawSQLQuery(query);
 }
 
 void DBManager::createChannelTable() {
   std::string query = "CREATE TABLE IF NOT EXISTS tbl_channel ("
                       "id SERIAL PRIMARY KEY "
                       ");";
-  PGresult *res = PQexecParams(m_db_conn.getConn(), query.c_str(), 0, NULL,
-                               NULL, NULL, NULL, 0);
-
-  if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-    std::string error_message = PQerrorMessage(m_db_conn.getConn());
-    std::cerr << error_message + '\n';
-  }
+  executeRawSQLQuery(query);
 }
 
 void DBManager::createChannelNodeTable() {
@@ -80,6 +62,12 @@ void DBManager::createChannelNodeTable() {
       "channel_id INT REFERENCES tbl_channel(id) ON DELETE CASCADE, "
       "node_entity_id INT REFERENCES tbl_node_entity(id) ON DELETE CASCADE"
       ");";
+
+  executeRawSQLQuery(query);
+}
+
+void DBManager::executeRawSQLQuery(const std::string &query) {
+
   PGresult *res = PQexecParams(m_db_conn.getConn(), query.c_str(), 0, NULL,
                                NULL, NULL, NULL, 0);
 

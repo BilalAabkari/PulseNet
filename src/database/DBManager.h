@@ -6,7 +6,7 @@
 class DBManager {
 
 public:
-  DBManager(DatabaseKeys config);
+  DBManager(const DatabaseKeys &config);
 
   void connectToDb();
   bool isConnected();
@@ -20,4 +20,5 @@ private:
   void createChannelTable();
   void createChannelNodeTable();
   void createPulseNetDB();
+  void executeRawSQLQuery(const std::string &query);
 };
