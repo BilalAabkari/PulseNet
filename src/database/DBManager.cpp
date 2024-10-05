@@ -1,4 +1,5 @@
 #include "DBManager.h"
+#include "../utils/Logger.h"
 #include <stdexcept>
 #include <iostream>
 #include <libpq-fe.h>
@@ -33,7 +34,8 @@ void DBManager::init() {
 
 void DBManager::createPulseNetDB() {
   std::string query = "CREATE DATABASE pulsenet;";
-  executeRawSQLQuery(query);
+  PGresult *res = executeRawSQLQuery(query);
+  logSQLQueryResult(res, query);
 }
 
 void DBManager::createNodeEntityTable() {
@@ -45,14 +47,16 @@ void DBManager::createNodeEntityTable() {
                       "ip_address INET NOT NULL"
                       ");";
 
-  executeRawSQLQuery(query);
+  PGresult *res = executeRawSQLQuery(query);
+  logSQLQueryResult(res, query);
 }
 
 void DBManager::createChannelTable() {
   std::string query = "CREATE TABLE IF NOT EXISTS tbl_channel ("
                       "id SERIAL PRIMARY KEY "
                       ");";
-  executeRawSQLQuery(query);
+  PGresult *res = executeRawSQLQuery(query);
+  logSQLQueryResult(res, query);
 }
 
 void DBManager::createChannelNodeTable() {
@@ -63,16 +67,43 @@ void DBManager::createChannelNodeTable() {
       "node_entity_id INT REFERENCES tbl_node_entity(id) ON DELETE CASCADE"
       ");";
 
-  executeRawSQLQuery(query);
+  PGresult *res = executeRawSQLQuery(query);
+  logSQLQueryResult(res, query);
 }
 
-void DBManager::executeRawSQLQuery(const std::string &query) {
+PGresult *DBManager::executeRawSQLQuery(const std::string &query) {
 
-  PGresult *res = PQexecParams(m_db_conn.getConn(), query.c_str(), 0, NULL,
-                               NULL, NULL, NULL, 0);
+  return PQexecParams(m_db_conn.getConn(), query.c_str(), 0, NULL, NULL, NULL,
+                      NULL, 0);
+}
 
-  if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-    std::string error_message = PQerrorMessage(m_db_conn.getConn());
-    std::cerr << error_message + '\n';
+void DBManager::logSQLQueryResult(const PGresult *res, const std::string &query,
+                                  const std::string &message) const {
+  ExecStatusType status = PQresultStatus(res);
+  Logger &logger = Logger::getInstance();
+
+  switch (status) {
+  case PGRES_COMMAND_OK:
+  case PGRES_TUPLES_OK:
+  case PGRES_COPY_OUT:
+  case PGRES_COPY_IN:
+  case PGRES_COPY_BOTH:
+  case PGRES_SINGLE_TUPLE:
+  case PGRES_PIPELINE_SYNC:
+    if (!message.empty())
+      logger.log(LogType::DATABASE, LogSeverity::LOG_INFO, message);
+    break;
+  case PGRES_EMPTY_QUERY:
+    logger.log(LogType::DATABASE, LogSeverity::LOG_WARNING,
+               "SQL query is empty: " + query);
+    break;
+  case PGRES_NONFATAL_ERROR:
+    logger.log(LogType::DATABASE, LogSeverity::LOG_WARNING,
+               PQerrorMessage(m_db_conn.getConn()));
+    break;
+  default:
+    logger.log(LogType::DATABASE, LogSeverity::LOG_ERROR,
+               PQerrorMessage(m_db_conn.getConn()));
+    break;
   }
 }

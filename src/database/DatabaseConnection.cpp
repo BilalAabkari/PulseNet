@@ -1,5 +1,6 @@
 #include "DatabaseConnection.h"
 #include <stdexcept>
+#include <iostream>
 
 const std::string DatabaseConnection::DEFAULT_HOST = "localhost";
 const std::string DatabaseConnection::DEFAULT_DATABASE_NAME = "postgres";
