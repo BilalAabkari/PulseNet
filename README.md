@@ -1,28 +1,35 @@
 # PulseNet
 A distributed realtime database and events bus service
 
-## How to install:
+## Requirements for building the project
 
-install cmake
+* cmake
+* g++ compiler
 
-install g++
 
 ## Postgres DB setup
+This project uses Postgre database. Here are the instructions for debian based distributions (ubuntu, lubuntu, debian...):
 
-sudo apt install postgresql postgresql-contrib
+* Install postgre:
 
-sudo apt install libpq-dev
+`sudo apt install postgresql postgresql-contrib`
 
-### Create a role:
+* Install some dependencies:
 
-sudo -u postgres createuser --interactive
+`sudo apt install libpq-dev`
 
-### Set a password for default db
+*  Create a role for your user:
 
+`sudo -u postgres createuser --interactive` and follow the instructions
+
+*  Set a password for default db
+
+
+You need a password for the default Postgre DB:
+
+```
 sudo -i -u postgres
-
 psql
-
 ALTER USER postgres WITH PASSWORD 'your_password';
-
+```
 
