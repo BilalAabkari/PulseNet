@@ -12,16 +12,25 @@ void handleRequest(char request[], int size) {
   std::cout << request << std::endl;
 }
 
+const std::string YELLOW = "\033[33m"; // Yellow text
+const std::string RESET = "\033[0m";   // Reset to default color
+
 int main() {
   Logger &logger = Logger::getInstance();
-  std::locale::global(std::locale("en_US.UTF-8"));
+
+  try {
+    std::locale loc("");
+    std::locale::global(loc);
+  } catch (...) {
+    std::locale::global(std::locale("C"));
+  }
+
   std::cout.imbue(std::locale());
   std::cerr.imbue(std::locale());
 
   /********** Read config file ***********/
   ConfigParser parser;
   parser.read();
-  std::cout << parser;
 
   /********** Connect and initialize database ***********/
   DBManager db_manager(parser.getDatabaseConfig());
@@ -30,6 +39,11 @@ int main() {
     db_manager.init();
   } catch (const std::exception &ex) {
     logger.log(LogType::DATABASE, LogSeverity::LOG_ERROR, ex.what());
+    std::cerr << ex.what() << std::endl;
+    std::cerr << YELLOW << "CHECK YOUR PARAMETERS AT THE CONFIGURATION FILE "
+              << parser.getConfigFilePath() << RESET << "\n";
+
+    return -1;
   }
 
   if (db_manager.isConnected()) {
@@ -45,6 +59,8 @@ int main() {
     requestsListener.startListening(handleRequest);
   } catch (const std::exception &ex) {
     logger.log(LogType::NETWORK, LogSeverity::LOG_ERROR, ex.what());
+    std::cerr << ex.what() << std::endl;
+    return -1;
   }
   logger.log(LogType::NETWORK, LogSeverity::LOG_INFO,
              "Socket listener created successfully at " +

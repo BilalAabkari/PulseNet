@@ -38,6 +38,11 @@ public:
    */
   DatabaseKeys getDatabaseConfig() const;
 
+  /**
+   * @return Config file location
+   */
+  std::string getConfigFilePath() const;
+
   /* ----------------
    * Overloaded operators
    * ----------------
@@ -49,7 +54,7 @@ private:
    * Private constants
    * ----------------
    */
-  static const std::string FILE_NAME;
+  static const std::string CONFIG_FILE_NAME;
   static const char COMMENT_CHAR;
   static const char CONFIG_KEY_SEPARATOR;
   static const DatabaseKeys DB_KEYS;
@@ -60,4 +65,11 @@ private:
    */
   std::ifstream m_config_file;
   std::map<std::string, std::string> m_config;
+
+  /* ----------------
+   * Private methods
+   * ----------------
+   */
+
+  void createConfigFileIfNotExists(const std::string &configPath);
 };

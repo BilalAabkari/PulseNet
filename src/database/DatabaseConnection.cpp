@@ -53,7 +53,10 @@ bool DatabaseConnection::connect() {
                " dbname = " + DEFAULT_DATABASE_NAME + " user = " + DEFAULT_USER;
     m_conn = PQconnectdb(conninfo.c_str());
     if (PQstatus(m_conn) != CONNECTION_OK) {
-      throw std::runtime_error("Couldn't connect to the database");
+      std::string error_message = PQerrorMessage(m_conn);
+      PQfinish(m_conn);
+      throw std::runtime_error("Couldn't connect to the database: " +
+                               error_message);
     }
   }
 
