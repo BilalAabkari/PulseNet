@@ -35,6 +35,8 @@ void Logger::log(LogType type, LogSeverity severity,
   case LogType::APPLICATION:
     m_appLog << logMessage << std::endl;
     break;
+  default:
+    break;
   }
 }
 
@@ -42,7 +44,6 @@ Logger::Logger() {
   std::string logDir = getLogDirectory();
   std::filesystem::create_directories(logDir);
 
-  std::cout << logDir << std::endl;
   m_networkLog.open(logDir + "/network.log", std::ios::app);
   m_dbLog.open(logDir + "/database.log", std::ios::app);
   m_appLog.open(logDir + "/application.log", std::ios::app);
@@ -87,6 +88,10 @@ std::string Logger::getSeverityString(LogSeverity severity) const {
     return "WARNING";
   case LogSeverity::LOG_ERROR:
     return "ERROR";
+  case LogSeverity::POSTGRES_LOG:
+    return "[POSTGRES LOG]";
+  case LogSeverity::NONE:
+    return "";
   default:
     return "UNKNOWN";
   }

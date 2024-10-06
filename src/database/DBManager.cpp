@@ -4,6 +4,12 @@
 #include <iostream>
 #include <libpq-fe.h>
 
+void noticeProcessor(void *arg, const char *message) {
+
+  Logger &logger = Logger::getInstance();
+  logger.log(LogType::DATABASE, LogSeverity::POSTGRES_LOG, message);
+}
+
 DBManager::DBManager(const DatabaseKeys &config) {
   m_db_config = config;
   m_db_conn =
@@ -18,10 +24,9 @@ void DBManager::connectToDb() {
   if (should_create_db) {
     createPulseNetDB();
     m_db_conn.connect();
-    if (m_db_conn.isConnected()) {
-      std::cout << "Connected to database successfully\n";
-    }
   }
+
+  PQsetNoticeProcessor(m_db_conn.getConn(), noticeProcessor, nullptr);
 }
 
 bool DBManager::isConnected() { return m_db_conn.isConnected(); }

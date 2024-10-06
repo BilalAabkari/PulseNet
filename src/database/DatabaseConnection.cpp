@@ -43,7 +43,6 @@ bool DatabaseConnection::connect() {
   std::string conninfo =
       "host = " + m_host + " port = " + m_port + " password = " + m_password +
       " dbname = " + PULSE_NET_DATABASE_NAME + " user = " + DEFAULT_USER;
-
   m_conn = PQconnectdb(conninfo.c_str());
 
   if (PQstatus(m_conn) != CONNECTION_OK) {

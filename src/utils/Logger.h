@@ -5,7 +5,7 @@
 #include <mutex>
 
 enum class LogType { NETWORK, DATABASE, APPLICATION };
-enum class LogSeverity { LOG_INFO, LOG_WARNING, LOG_ERROR };
+enum class LogSeverity { LOG_INFO, LOG_WARNING, LOG_ERROR, POSTGRES_LOG, NONE };
 
 class Logger {
 public:
@@ -37,7 +37,7 @@ private:
    * ----------------
    */
   Logger();
-  Logger::~Logger();
+  ~Logger();
 
   /* ----------------
    * Private methods
