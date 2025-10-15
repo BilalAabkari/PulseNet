@@ -14,7 +14,6 @@ add_executable (PulseNet "PulseNet.cpp" "PulseNet.h" )
 target_link_libraries(PulseNet PRIVATE
     utils
     networking
-    $<$<PLATFORM_ID:Windows>:Ws2_32>
 )
 
 

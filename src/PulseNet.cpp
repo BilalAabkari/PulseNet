@@ -1,4 +1,5 @@
 ﻿#include "PulseNet.h"
+#include "networking/Client.h"
 #include "networking/NetworkManager.h"
 #include "utils/ConfigParser.h"
 #include "utils/Logger.h"
@@ -7,7 +8,7 @@
 #include <locale>
 #include <thread>
 
-void handleRequest(char request[], int size)
+void handleRequest(Client &client, char request[])
 {
     std::cout << request << std::endl;
 }
@@ -50,6 +51,7 @@ int main()
         std::cerr << ex.what() << std::endl;
         return -1;
     }
+
     logger.log(LogType::NETWORK, LogSeverity::LOG_INFO,
                "Socket listener created successfully at " + requestsListener.getIp() + ":" +
                    std::to_string(requestsListener.getPort()));

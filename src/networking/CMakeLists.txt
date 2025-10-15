@@ -8,4 +8,8 @@ else()
     file(GLOB PLATFORM_SPECIFIC_NETWORKINGS "unix/*.cpp")
 endif()
 
-add_library(networking STATIC ${PLATFORM_SPECIFIC_NETWORKINGS} ${NETWORKING_SOURCES} "Connection.h")
+add_library(networking STATIC ${PLATFORM_SPECIFIC_NETWORKINGS} ${NETWORKING_SOURCES} )
+
+if(WIN32)
+    target_link_libraries(networking PRIVATE Ws2_32 Mswsock)
+endif()
