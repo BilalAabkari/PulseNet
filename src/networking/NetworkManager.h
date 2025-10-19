@@ -3,10 +3,12 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <thread>
 
 #include "Client.h"
+#include "NetworkMessageQueue.h"
 #include "NetworkPlatform.h"
 
 #ifdef _WIN32
@@ -16,6 +18,9 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
+
+namespace pulse::net
+{
 
 /**
  * @class NetworkManager
@@ -32,6 +37,10 @@ class NetworkManager
      * ----------------
      */
     NetworkManager(int port, std::string ip_address = ANY_IP);
+    NetworkManager(const NetworkManager &nm) = delete;
+    NetworkManager(const NetworkManager &&nm) = delete;
+    NetworkManager &operator=(const NetworkManager &nm) = delete;
+    NetworkManager &operator=(NetworkManager &&nm) = delete;
 
     /* ----------------
      * Public methods
@@ -62,6 +71,11 @@ class NetworkManager
      * @brief Adds a new client to the clients list. Thread safe
      */
     Client *addClient(uint64_t id, int port, std::string ipAddress, SOCKET sock);
+
+    /*
+     * @bried Creates a request after reveiving from client
+     */
+    std::unique_ptr<Request> createRequest(const Client &client);
 
     void terminateClient(uint64_t id);
 
@@ -192,7 +206,7 @@ class NetworkManager
      * Synchronizes operations that modify or iterate over m_client_list,
      * preventing race conditions when multiple threads access client data.
      */
-    std::mutex m_mtx;
+    std::shared_mutex m_mtx;
 
     /**
      * @brief Map of all currently connected clients, indexed by unique ID.
@@ -210,6 +224,8 @@ class NetworkManager
      * Private methdos
      * ----------------
      */
+
+    NetworkMessageQueue m_requests_queue{};
 
 #ifdef _WIN32
 
@@ -311,3 +327,5 @@ class NetworkManager
 
 #endif
 };
+
+} // namespace pulse::net

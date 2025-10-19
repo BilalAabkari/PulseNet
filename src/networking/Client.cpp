@@ -1,23 +1,31 @@
 #include "Client.h"
-
+namespace pulse::net
+{
 Client::Client(uint64_t id, int port, std::string ipAddress, SOCKET_TYPE sock)
     : m_id(id), m_port(port), m_ipAddress(ipAddress), m_sock(sock)
 {
     m_recv_len = 0;
     m_send_len = 0;
+
+    m_is_disconnecting = false;
 }
 
-uint64_t Client::getId()
+uint64_t Client::getId() const
 {
     return m_id;
 }
 
-SOCKET_TYPE Client::getSocket()
+SOCKET_TYPE Client::getSocket() const
 {
     return m_sock;
 }
 
-int Client::getReferenceCount()
+std::pair<int, std::string> Client::getAddress() const
+{
+    return {m_port, m_ipAddress};
+}
+
+int Client::getReferenceCount() const
 {
     return m_reference_count.load();
 }
@@ -53,3 +61,4 @@ OVERLAPPED *Client::getReadOverlapped()
     return &m_recv_overlapped;
 }
 #endif
+} // namespace pulse::net

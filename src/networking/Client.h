@@ -8,6 +8,30 @@
 #include <winsock2.h>
 #endif
 
+namespace pulse::net
+{
+
+/**
+ * @struct ClientDto
+ * @brief Data Transfer Object for client connection information.
+ *
+ * A lightweight, platform-independent structure that encapsulates the essential
+ * identifying information of a client connection. Used for transferring client
+ * data between components without exposing the full Client implementation
+ * details or platform-specific socket handles.
+ *
+ * @note This structure contains only the core identifying information and does
+ *       not include any connection state, buffers, or socket handles.
+ *
+ * @see Client for the full client connection management class
+ */
+struct ClientDto
+{
+    uint64_t id;
+    std::string ip_address;
+    int port;
+};
+
 /**
  * @class Client
  * @brief A class that parses config.
@@ -26,11 +50,16 @@ class Client
      */
     Client(uint64_t id, int port, std::string ipAddress, SOCKET_TYPE sock);
 
+    Client(const Client &client) = delete;
+    Client(Client &&client) = delete;
+    Client &operator=(const Client &client) = delete;
+    Client &operator=(Client &&client) = delete;
+
     /* ----------------
      * Getters
      * ----------------
      */
-    uint64_t getId();
+    uint64_t getId() const;
 
     /**
      * @brief Gets a pointer to the receive buffer.
@@ -176,6 +205,8 @@ class Client
         return &m_send_len;
     }
 
+    std::pair<int, std::string> getAddress() const;
+
     /**
      * @brief Gets the socket descriptor/handle for this client connection.
      *
@@ -196,9 +227,9 @@ class Client
      * invalid if the client disconnects or the connection is closed.
      *
      */
-    SOCKET_TYPE getSocket();
+    SOCKET_TYPE getSocket() const;
 
-    int getReferenceCount();
+    int getReferenceCount() const;
 
 #ifdef _WIN32
     /**
@@ -372,3 +403,5 @@ class Client
     OVERLAPPED m_send_overlapped;
 #endif
 };
+
+} // namespace pulse::net

@@ -8,7 +8,7 @@
 #include <locale>
 #include <thread>
 
-void handleRequest(Client &client, char request[])
+void handleRequest(pulse::net::Client &client, char request[])
 {
     std::cout << request << std::endl;
 }
@@ -38,7 +38,7 @@ int main()
     parser.read();
 
     /********** Initialize sockets ***********/
-    NetworkManager requestsListener(80, "127.0.0.1");
+    pulse::net::NetworkManager requestsListener(80, "127.0.0.1");
 
     try
     {

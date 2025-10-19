@@ -12,6 +12,8 @@
 #include "../NetworkManager.h"
 
 // clang-format on
+namespace pulse::net
+{
 
 NetworkManager::NetworkManager(int port, std::string ip_address)
 {
@@ -52,7 +54,7 @@ int NetworkManager::getPort() const
 
 Client *NetworkManager::addClient(uint64_t id, int port, std::string ipAddress, SOCKET sock)
 {
-    std::lock_guard<std::mutex> lock(m_mtx);
+    std::unique_lock lock(m_mtx);
 
     std::unique_ptr client = std::make_unique<Client>(id, port, ipAddress, sock);
 
@@ -228,6 +230,9 @@ void NetworkManager::startListening(const std::function<void(Client &, char *)> 
                         else
                         {
                             std::string str(client->GetRecvBuffer(), client->GetRecvLength());
+                            std::unique_ptr<Request> request = createRequest(*client);
+                            request->message = std::move(str);
+                            m_requests_queue.push(std::move(request));
 
                             int success = postReceiveEvent(*client);
                             if (success)
@@ -255,6 +260,18 @@ void NetworkManager::startListening(const std::function<void(Client &, char *)> 
     });
 
     m_listener_thread.detach();
+}
+
+std::unique_ptr<Request> NetworkManager::createRequest(const Client &client)
+{
+    std::unique_ptr<Request> request = std::make_unique<Request>();
+    request->client.id = client.getId();
+
+    std::pair<int, std::string> address = client.getAddress();
+    request->client.ip_address = std::move(address.second);
+    request->client.port = address.first;
+
+    return request;
 }
 
 bool NetworkManager::postAcceptExEvent(AcceptContext &accept_context)
@@ -368,3 +385,5 @@ std::pair<int, std::string> NetworkManager::getRemoteAddressFromAcceptContext(Ac
 
     return {client_port, client_ip};
 }
+
+} // namespace pulse::net
