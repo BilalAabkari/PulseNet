@@ -1,7 +1,9 @@
 ﻿#include "PulseNet.h"
+#include "Commands.h"
 #include "networking/Client.h"
 #include "networking/NetworkManager.h"
 #include "utils/ConfigParser.h"
+#include "utils/Console.h"
 #include "utils/Logger.h"
 #include <codecvt>
 #include <iostream>
@@ -56,10 +58,10 @@ int main()
                "Socket listener created successfully at " + requestsListener.getIp() + ":" +
                    std::to_string(requestsListener.getPort()));
 
-    while (true)
-    {
-        // Do something
-    }
+    pulse::utils::Console console;
+    registerCommands(console, requestsListener);
+
+    console.run();
 
     return 0;
 }

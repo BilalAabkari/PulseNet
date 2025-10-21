@@ -115,6 +115,21 @@ void NetworkManager::closeSocket()
     WSACleanup();
 }
 
+void NetworkManager::showClients(std::ostream &os) const
+{
+    std::shared_lock lock(m_mtx);
+
+    os << std::left << std::setfill(' ') << std::setw(10) << "Client Id" << std::setw(3) << "|" << std::setw(24)
+       << " Ip Address" << std::setw(3) << "|" << std::setw(5) << "Port" << std::setw(3) << "|" << std::setw(5)
+       << "Refs" << std::setw(3) << "|" << std::setw(14) << "Disconnecting\n";
+    os << "---------------------------------------------------------------------\n";
+
+    for (const auto &item : m_client_list)
+    {
+        item.second->showInfo(std::cout);
+    }
+}
+
 void NetworkManager::startListening(const std::function<void(Client &, char *)> &callback, bool async)
 {
     if (m_listening)
@@ -155,7 +170,7 @@ void NetworkManager::startListening(const std::function<void(Client &, char *)> 
     m_listening = true;
     m_pending_accepts.fetch_add(1);
 
-    CreateIoCompletionPort((HANDLE)m_accept_ctx->client_socket, iocp, (ULONG_PTR)m_accept_ctx, 0);
+    CreateIoCompletionPort((HANDLE)m_server_socket, iocp, 0, 0);
 
     m_listener_thread = std::thread([this, iocp, &callback]() {
         DWORD bytes;
@@ -218,7 +233,7 @@ void NetworkManager::startListening(const std::function<void(Client &, char *)> 
                     if (overlapped == client->getReadOverlapped()) // Read case
                     {
 
-                        if (client->GetRecvLength() == 0) // Client disconnected
+                        if (bytes == 0) // Client disconnected
                         {
                             client->disconnect();
 
@@ -230,9 +245,11 @@ void NetworkManager::startListening(const std::function<void(Client &, char *)> 
                         else
                         {
                             std::string str(client->GetRecvBuffer(), client->GetRecvLength());
-                            std::unique_ptr<Request> request = createRequest(*client);
-                            request->message = std::move(str);
-                            m_requests_queue.push(std::move(request));
+                            std::cout << "I received " << str << " from client id " << client->getId();
+                            ;
+                            // std::unique_ptr<Request> request = createRequest(*client);
+                            // request->message = std::move(str);
+                            // m_requests_queue.push(std::move(request));
 
                             int success = postReceiveEvent(*client);
                             if (success)
@@ -313,7 +330,7 @@ bool NetworkManager::postAcceptExEvent(AcceptContext &accept_context)
     LPFN_ACCEPTEX lpfnAcceptEx = acceptExDynamicPtr.second;
 
     DWORD bytes_accept = 0;
-    SOCKET client_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    SOCKET client_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
     accept_context.client_socket = client_socket;
 
     ZeroMemory(&accept_context.overlapped, sizeof(accept_context.overlapped));
@@ -345,10 +362,10 @@ bool NetworkManager::postReceiveEvent(Client &client)
     DWORD bytes_received = 0;
     WSABUF wsa_buf;
     wsa_buf.buf = client.GetRecvBuffer();
-    wsa_buf.len = sizeof(client.GetRecvBuffer());
+    wsa_buf.len = MAX_BUFFER_LENGHT_FOR_REQUESTS;
 
     OVERLAPPED *read_overlapped = client.getReadOverlapped();
-    ZeroMemory(read_overlapped, sizeof(read_overlapped));
+    ZeroMemory(read_overlapped, sizeof(*read_overlapped));
 
     // TODO: This can end immediately if it already has data, we need to manage pushing to queue and recursive call.
     int result = WSARecv(client.getSocket(), &wsa_buf, 1, &bytes_received, &flags, read_overlapped, NULL);
@@ -366,22 +383,18 @@ bool NetworkManager::postReceiveEvent(Client &client)
 
 std::pair<int, std::string> NetworkManager::getRemoteAddressFromAcceptContext(AcceptContext &accept_context)
 {
-    // We get the ip and port:
-    sockaddr *local_addr = nullptr;
-    sockaddr *remote_addr = nullptr;
-    int local_len = 0;
-    int remote_len = 0;
 
-    GetAcceptExSockaddrs(accept_context.rcv_buffer, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR) + 16,
-                         reinterpret_cast<SOCKADDR **>(&local_addr), &local_len,
-                         reinterpret_cast<SOCKADDR **>(&remote_addr), &remote_len);
+    sockaddr_in remote_in{};
+
+    int remote_size = sizeof(remote_in);
+
+    int r = getpeername(accept_context.client_socket, reinterpret_cast<sockaddr *>(&remote_in), &remote_size);
 
     char client_ip[INET_ADDRSTRLEN];
     DWORD client_port;
 
-    sockaddr_in *remote_in = reinterpret_cast<sockaddr_in *>(remote_addr);
-    inet_ntop(AF_INET, &(remote_in->sin_addr), client_ip, INET_ADDRSTRLEN);
-    client_port = ntohs(remote_in->sin_port);
+    inet_ntop(AF_INET, &(remote_in.sin_addr), client_ip, INET_ADDRSTRLEN);
+    client_port = ntohs(remote_in.sin_port);
 
     return {client_port, client_ip};
 }

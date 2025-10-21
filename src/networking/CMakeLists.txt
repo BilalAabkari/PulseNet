@@ -1,4 +1,5 @@
 file(GLOB NETWORKING_SOURCES "*.cpp")
+file(GLOB HTTP_SOURCES "http/*.cpp")
 
 set(PLATFORM_SPECIFIC_NETWORKINGS)
 
@@ -8,7 +9,8 @@ else()
     file(GLOB PLATFORM_SPECIFIC_NETWORKINGS "unix/*.cpp")
 endif()
 
-add_library(networking STATIC ${PLATFORM_SPECIFIC_NETWORKINGS} ${NETWORKING_SOURCES} )
+
+add_library(networking STATIC ${PLATFORM_SPECIFIC_NETWORKINGS} ${NETWORKING_SOURCES} ${HTTP_SOURCES})
 
 if(WIN32)
     target_link_libraries(networking PRIVATE Ws2_32 Mswsock)

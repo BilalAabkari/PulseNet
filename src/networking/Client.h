@@ -1,6 +1,8 @@
 #pragma once
 #include "NetworkPlatform.h"
 #include "constants.h"
+#include <iomanip>
+#include <iostream>
 #include <string>
 #include <thread>
 
@@ -299,6 +301,8 @@ class Client
 
     bool isDisconnecting();
 
+    void showInfo(std::ostream &os) const;
+
   private:
     /* ----------------
      * Private attrbutes
@@ -399,8 +403,8 @@ class Client
     bool m_is_disconnecting;
 
 #ifdef _WIN32
-    OVERLAPPED m_recv_overlapped;
-    OVERLAPPED m_send_overlapped;
+    OVERLAPPED m_recv_overlapped{};
+    OVERLAPPED m_send_overlapped{};
 #endif
 };
 

@@ -50,6 +50,15 @@ bool Client::isDisconnecting()
     return m_is_disconnecting;
 }
 
+void Client::showInfo(std::ostream &os) const
+{
+    os << std::left << std::setfill(' ') << std::setw(10) << m_id << std::setw(3) << "|" << std::setw(24) << m_ipAddress
+       << std::setw(3) << "|" << std::setw(5) << m_port << std::setw(3) << "|" << std::setw(4) << m_reference_count
+       << "|" << std::setw(14) << m_is_disconnecting << "\n ";
+    os << "---------------------------------------------------------------------"
+          "\n";
+}
+
 #ifdef _WIN32
 OVERLAPPED *Client::getSendOverlapped()
 {

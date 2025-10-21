@@ -1,6 +1,8 @@
 #pragma once
 #include "constants.h"
 #include <functional>
+#include <iomanip>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -66,6 +68,8 @@ class NetworkManager
      * @brief Starts the socket listener
      */
     void startListening(const std::function<void(Client &, char *)> &callback, bool async = true);
+
+    void showClients(std::ostream &os) const;
 
     /*
      * @brief Adds a new client to the clients list. Thread safe
@@ -206,7 +210,7 @@ class NetworkManager
      * Synchronizes operations that modify or iterate over m_client_list,
      * preventing race conditions when multiple threads access client data.
      */
-    std::shared_mutex m_mtx;
+    mutable std::shared_mutex m_mtx;
 
     /**
      * @brief Map of all currently connected clients, indexed by unique ID.
