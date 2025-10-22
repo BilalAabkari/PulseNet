@@ -12,6 +12,7 @@
 #include "Client.h"
 #include "NetworkMessageQueue.h"
 #include "NetworkPlatform.h"
+#include "TCPMessageAssembler.h"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -224,12 +225,14 @@ class NetworkManager
      */
     std::unordered_map<uint64_t, std::unique_ptr<Client>> m_client_list;
 
+    NetworkMessageQueue m_requests_queue{};
+
+    TCPMessageAssembler *assembler;
+
     /* ----------------
      * Private methdos
      * ----------------
      */
-
-    NetworkMessageQueue m_requests_queue{};
 
 #ifdef _WIN32
 
