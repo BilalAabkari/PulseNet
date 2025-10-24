@@ -15,7 +15,7 @@
 namespace pulse::net
 {
 
-NetworkManager::NetworkManager(int port, std::string ip_address)
+NetworkManager::NetworkManager(int port, std::string ip_address, std::unique_ptr<TCPMessageAssembler> assembler)
 {
 
     m_ip_address = ip_address;
@@ -35,6 +35,15 @@ NetworkManager::NetworkManager(int port, std::string ip_address)
     else
     {
         InetPton(AF_INET, m_ip_address.c_str(), &m_server_address.sin_addr);
+    }
+
+    if (!assembler)
+    {
+        m_assembler = std::make_unique<DefaultMessageAssembler>();
+    }
+    else
+    {
+        m_assembler = std::move(assembler);
     }
 }
 
@@ -245,11 +254,17 @@ void NetworkManager::startListening(const std::function<void(Client &, char *)> 
                         else
                         {
                             std::string str(client->GetRecvBuffer(), client->GetRecvLength());
-                            std::cout << "I received " << str << " from client id " << client->getId();
-                            ;
-                            // std::unique_ptr<Request> request = createRequest(*client);
-                            // request->message = std::move(str);
-                            // m_requests_queue.push(std::move(request));
+                            std::vector<std::string> messages =
+                                m_assembler->feed(client->getId(), client->GetRecvBuffer(), client->GetRecvLength(),
+                                                  MAX_BUFFER_LENGHT_FOR_REQUESTS, bytes);
+
+                            for (std::string message : messages)
+                            {
+
+                                std::unique_ptr<Request> request = createRequest(*client);
+                                request->message = std::move(message);
+                                m_requests_queue.push(std::move(request));
+                            }
 
                             int success = postReceiveEvent(*client);
                             if (success)
@@ -330,7 +345,7 @@ bool NetworkManager::postAcceptExEvent(AcceptContext &accept_context)
     LPFN_ACCEPTEX lpfnAcceptEx = acceptExDynamicPtr.second;
 
     DWORD bytes_accept = 0;
-    SOCKET client_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+    SOCKET client_socket = WSASocketW(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
     accept_context.client_socket = client_socket;
 
     ZeroMemory(&accept_context.overlapped, sizeof(accept_context.overlapped));

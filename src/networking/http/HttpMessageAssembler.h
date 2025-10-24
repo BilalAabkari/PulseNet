@@ -39,7 +39,7 @@ class HttpMessageAssembler : public TCPMessageAssembler
         std::string error_message;
         std::string error_details;
         bool continue_listening = false;
-        T value;
+        T value{};
     };
 
     using HEADER_LIST = std::unordered_map<std::string, std::string>;

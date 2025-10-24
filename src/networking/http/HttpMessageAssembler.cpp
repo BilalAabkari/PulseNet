@@ -268,6 +268,8 @@ std::vector<std::string> HttpMessageAssembler::feed(uint64_t id, char *buffer, i
             }
         }
     }
+
+    return messages;
 }
 
 HttpMessageAssembler::VersionParseResult HttpMessageAssembler::parseHttpVersion(const char *buffer, int buffer_len,

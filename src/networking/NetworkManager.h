@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "Client.h"
+#include "DefaultMessageAssembler.h"
 #include "NetworkMessageQueue.h"
 #include "NetworkPlatform.h"
 #include "TCPMessageAssembler.h"
@@ -39,7 +40,8 @@ class NetworkManager
      * Constructors
      * ----------------
      */
-    NetworkManager(int port, std::string ip_address = ANY_IP);
+    NetworkManager(int port, std::string ip_address = ANY_IP, std::unique_ptr<TCPMessageAssembler> assembler = nullptr);
+
     NetworkManager(const NetworkManager &nm) = delete;
     NetworkManager(const NetworkManager &&nm) = delete;
     NetworkManager &operator=(const NetworkManager &nm) = delete;
@@ -227,7 +229,7 @@ class NetworkManager
 
     NetworkMessageQueue m_requests_queue{};
 
-    TCPMessageAssembler *assembler;
+    std::unique_ptr<TCPMessageAssembler> m_assembler;
 
     /* ----------------
      * Private methdos

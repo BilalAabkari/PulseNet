@@ -127,7 +127,7 @@ class Client
      *
      * @see GetRecvBuffer() to access the actual data
      */
-    int GetRecvLength() const
+    int &GetRecvLength()
     {
         return m_recv_len;
     }
