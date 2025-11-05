@@ -28,9 +28,9 @@ class ThreadPool
 
     struct ThreadContext
     {
-        int id;
+        int id = -1;
+        Status status = Status::IDLE;
         std::thread thread;
-        Status status;
     };
 
     std::vector<ThreadContext> m_threads;
@@ -39,7 +39,7 @@ class ThreadPool
 
     std::function<void()> m_callback;
 
-    bool m_running;
+    std::atomic<bool> m_running;
 
     void worker(int id);
 };

@@ -55,7 +55,7 @@ void Console::run() const
         if (!std::getline(std::cin, line))
             break;
 
-        auto tokens = tokenize(line);
+        std::vector<std::string> tokens = tokenize(line);
         if (tokens.empty())
             continue;
 

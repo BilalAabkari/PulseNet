@@ -2,6 +2,8 @@
 #include "Commands.h"
 #include "networking/Client.h"
 #include "networking/NetworkManager.h"
+#include "networking/ThreadPool.h"
+#include "networking/http/HttpResponse.h"
 #include "utils/ConfigParser.h"
 #include "utils/Console.h"
 #include "utils/Logger.h"
@@ -44,8 +46,7 @@ int main()
 
     try
     {
-        requestsListener.setupSocket();
-        requestsListener.startListening(handleRequest);
+        requestsListener.startListening();
     }
     catch (const std::exception &ex)
     {
@@ -60,6 +61,30 @@ int main()
 
     pulse::utils::Console console;
     registerCommands(console, requestsListener);
+
+    pulse::net::ThreadPool test(1, [&requestsListener]() {
+        std::unique_ptr<pulse::net::NetworkManager::Request> request = requestsListener.next();
+
+        std::cout << "*********************************************************"
+                     "********\n";
+        std::cout << "CLIENT ID: " << std::to_string(request->client.id)
+                  << "\nIP ADDRESS: " << request->client.ip_address
+                  << "\nPORT: " << std::to_string(request->client.port) << "\n\n";
+        std::cout << request->message;
+
+        std::ostringstream response_body;
+        response_body << "{\n"
+                      << "\"message\" : \"Message received!\"\n"
+                      << "}";
+
+        pulse::net::HttpResponse response(pulse::net::HttpVersion::HTTP_1_1, pulse::net::HttpStatus::OK,
+                                          response_body.str());
+        response.addHeader("Content-Type", "application/json");
+
+        requestsListener.send(request->client.id, response.serialize());
+    });
+
+    test.run();
 
     console.run();
 

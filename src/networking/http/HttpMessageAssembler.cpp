@@ -1,5 +1,5 @@
 #include "HttpMessageAssembler.h"
-#include "../constants.h"
+
 #include <algorithm>
 #include <charconv>
 
@@ -11,8 +11,8 @@ HttpMessageAssembler::HttpMessageAssembler(bool assemble_chunked_requests)
 {
 }
 
-std::vector<std::string> HttpMessageAssembler::feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
-                                                    int last_tcp_packet_len)
+HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, char *buffer, int &buffer_len,
+                                                                  int max_buffer_len, int last_tcp_packet_len)
 {
 
     std::lock_guard lock(m_mtx);
@@ -130,15 +130,15 @@ std::vector<std::string> HttpMessageAssembler::feed(uint64_t id, char *buffer, i
 
                         char *next_message_ptr = body_start_ptr + state.body_lenght;
 
-                        int new_lenght = 0;
+                        int new_length = 0;
                         if (next_message_ptr < buffer + buffer_len)
                         {
                             ptrdiff_t len = buffer + buffer_len - next_message_ptr;
-                            new_lenght = len;
-                            std::memmove(buffer, buffer, new_lenght);
+                            new_length = static_cast<int>(len);
+                            std::memmove(buffer, buffer, new_length);
                         }
 
-                        buffer_len = new_lenght;
+                        buffer_len = new_length;
 
                         resetState(state);
                     }
@@ -253,7 +253,7 @@ std::vector<std::string> HttpMessageAssembler::feed(uint64_t id, char *buffer, i
                                 if (len > 0)
                                 {
                                     memmove(buffer, start_of_next, len);
-                                    buffer_len = len;
+                                    buffer_len = static_cast<int>(len);
                                 }
                                 else
                                 {
@@ -269,7 +269,28 @@ std::vector<std::string> HttpMessageAssembler::feed(uint64_t id, char *buffer, i
         }
     }
 
-    return messages;
+    HttpMessageAssembler::AssemblingResult result;
+    result.messages = messages;
+
+    if (error)
+    {
+        result.error = true;
+        std::ostringstream oss;
+        oss << "{\n"
+            << "  \"message\": \"" << error_message << "\",\n"
+            << "  \"details\": \"" << error_details << "\"\n"
+            << "}";
+
+        std::string json_body = oss.str();
+        size_t size = json_body.size();
+
+        HttpResponse response(state.http_version, HttpStatus::BAD_REQUEST, std::move(json_body));
+
+        response.addHeader("Content-Lenght", std::to_string(size));
+        result.error_message = response.serialize();
+    }
+
+    return result;
 }
 
 HttpMessageAssembler::VersionParseResult HttpMessageAssembler::parseHttpVersion(const char *buffer, int buffer_len,

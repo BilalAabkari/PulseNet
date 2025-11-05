@@ -2,12 +2,9 @@
 namespace pulse::net
 {
 Client::Client(uint64_t id, int port, std::string ipAddress, SOCKET_TYPE sock)
-    : m_id(id), m_port(port), m_ipAddress(ipAddress), m_sock(sock)
+    : m_id(id), m_port(port), m_ipAddress(ipAddress), m_sock(sock), m_recv_len(0), m_send_len(0),
+      m_last_bytes_received(0), m_is_disconnecting(false), m_is_sending(false)
 {
-    m_recv_len = 0;
-    m_send_len = 0;
-
-    m_is_disconnecting = false;
 }
 
 uint64_t Client::getId() const
@@ -45,7 +42,7 @@ void Client::disconnect()
     m_is_disconnecting = true;
 }
 
-bool Client::isDisconnecting()
+bool Client::isDisconnecting() const
 {
     return m_is_disconnecting;
 }
@@ -57,6 +54,17 @@ void Client::showInfo(std::ostream &os) const
        << "|" << std::setw(14) << m_is_disconnecting << "\n ";
     os << "---------------------------------------------------------------------"
           "\n";
+}
+
+void Client::addBytesReceived(int bytes)
+{
+    m_recv_len += bytes;
+    m_last_bytes_received = bytes;
+}
+
+int Client::getLastBytesReceived() const
+{
+    return m_last_bytes_received;
 }
 
 #ifdef _WIN32

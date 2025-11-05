@@ -6,6 +6,7 @@ namespace pulse::net
 HttpResponse::HttpResponse(HttpVersion version, HttpStatus status, std::string body)
     : m_version(version), m_status(status), m_body(body)
 {
+    addHeader("Content-Length", std::to_string(body.size()));
 }
 
 HttpResponse::~HttpResponse()

@@ -28,7 +28,7 @@ void ThreadPool::run()
         ThreadContext ctx;
         ctx.id = i;
         ctx.status = Status::IDLE;
-        ctx.thread = std::thread(worker, this, i);
+        ctx.thread = std::thread([this, i]() { this->worker(i); });
 
         m_threads.push_back(std::move(ctx));
     }
@@ -58,5 +58,6 @@ void ThreadPool::worker(int id)
     }
 
     m_threads[id].status = Status::IDLE;
+}
 
 } // namespace pulse::net

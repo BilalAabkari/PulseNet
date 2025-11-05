@@ -1,6 +1,8 @@
 #pragma once
 #include "../TCPMessageAssembler.h"
+#include "../constants.h"
 #include "HttpHelpers.h"
+#include "HttpResponse.h"
 #include <mutex>
 #include <unordered_map>
 
@@ -12,8 +14,8 @@ class HttpMessageAssembler : public TCPMessageAssembler
   public:
     HttpMessageAssembler(bool assemble_chunked_requests = true);
 
-    virtual std::vector<std::string> feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
-                                          int last_tcp_packet_len);
+    virtual AssemblingResult feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
+                                  int last_tcp_packet_len);
 
   private:
     enum TransferMode

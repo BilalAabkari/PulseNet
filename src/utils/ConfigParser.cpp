@@ -52,6 +52,10 @@ std::string ConfigParser::getConfigFilePath() const
     {
         return std::string(path) + "\\PulseNet\\" + CONFIG_FILE_NAME;
     }
+    else
+    {
+        throw std::runtime_error("Could not find config folder path");
+    }
 #else
     return std::string(getenv("HOME")) + "/.config/PulseNet/" + CONFIG_FILE_NAME;
 #endif

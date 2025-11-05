@@ -3,8 +3,11 @@
 #include "constants.h"
 #include <iomanip>
 #include <iostream>
+#include <mutex>
+#include <queue>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -29,9 +32,9 @@ namespace pulse::net
  */
 struct ClientDto
 {
-    uint64_t id;
-    std::string ip_address;
-    int port;
+    uint64_t id{0};         ///< Unique identifier of the client
+    std::string ip_address; ///< Client's IP address
+    int port{0};            ///< Client's port number
 };
 
 /**
@@ -63,149 +66,9 @@ class Client
      */
     uint64_t getId() const;
 
-    /**
-     * @brief Gets a pointer to the receive buffer.
-     *
-     * Returns a direct pointer to the internal receive buffer where incoming
-     * data from the client is stored. This buffer is populated by recv() calls.
-     *
-     * @return char* Pointer to the receive buffer array
-     *
-     * @warning The returned pointer provides mutable access to the internal
-     * buffer. Any modifications through this pointer will directly affect the
-     *          client's internal state.
-     *
-     * @note Only the first GetRecvLength() bytes contain valid data.
-     * @note Buffer size is MAX_BUFFER_LENGHT_FOR_REQUESTS bytes.
-     *
-     * @see GetRecvLength() to determine how many bytes are valid
-     * @see GetRecvLengthPtr() to update the length after recv() operations
-     */
-    char *GetRecvBuffer()
-    {
-        return m_recv_buffer;
-    }
+    void addBytesReceived(int bytes);
 
-    /**
-     * @brief Gets a pointer to the send buffer.
-     *
-     * Returns a direct pointer to the internal send buffer used for preparing
-     * outgoing data to be sent to the client. Data should be written to this
-     * buffer before calling send().
-     *
-     * @return char* Pointer to the send buffer array
-     *
-     * @warning The returned pointer provides mutable access to the internal
-     * buffer. Any modifications through this pointer will directly affect the
-     *          client's internal state.
-     *
-     * @note Only the first GetSendLength() bytes are considered valid for
-     * sending.
-     * @note Buffer size is MAX_BUFFER_LENGHT_FOR_REQUESTS bytes.
-     *
-     * @see GetSendLength() to determine how many bytes to send
-     * @see GetSendLengthPtr() to update the length after preparing data
-     */
-    char *GetSendBuffer()
-    {
-        return m_send_buffer;
-    }
-
-    /**
-     * @brief Gets the number of valid bytes in the receive buffer.
-     *
-     * Returns the count of bytes that were received in the last recv()
-     * operation and are currently valid in the receive buffer.
-     *
-     * @return int Number of valid bytes in m_recv_buffer
-     *         - > 0: Number of bytes available to read
-     *         - 0: No data received yet, or connection closed gracefully
-     *
-     * @note This is a read-only accessor. Use GetRecvLengthPtr() to modify the
-     * length.
-     * @note Valid data range: [0, MAX_BUFFER_LENGHT_FOR_REQUESTS]
-     *
-     * @see GetRecvBuffer() to access the actual data
-     */
-    int &GetRecvLength()
-    {
-        return m_recv_len;
-    }
-
-    /**
-     * @brief Gets the number of valid bytes in the send buffer.
-     *
-     * Returns the count of bytes that are prepared in the send buffer and
-     * ready to be transmitted, or the number of bytes successfully sent in
-     * the last send() operation.
-     *
-     * @return int Number of valid bytes in m_send_buffer
-     *         - > 0: Number of bytes to send or sent
-     *         - 0: No data prepared or all data sent
-     *
-     * @note This is a read-only accessor. Use GetSendLengthPtr() to modify the
-     * length.
-     * @note Valid data range: [0, MAX_BUFFER_LENGHT_FOR_REQUESTS]
-     *
-     * @see GetSendBuffer() to access the buffer for writing data
-     */
-    int GetSendLength() const
-    {
-        return m_send_len;
-    }
-
-    /**
-     * @brief Gets a pointer to the receive length variable.
-     *
-     * Returns a pointer to the internal variable tracking the number of valid
-     * bytes in the receive buffer. This is primarily used to update the length
-     * directly after recv() operations.
-     *
-     * @return int* Pointer to m_recv_len for direct modification
-     *
-     * @warning Provides direct mutable access to the length variable. Incorrect
-     *          usage can lead to buffer overruns or reading invalid data.
-     *
-     * @note Typical usage: `*client->GetRecvLengthPtr() = recv(...);`
-     * @note Always ensure the value stays within [0,
-     * MAX_BUFFER_LENGHT_FOR_REQUESTS]
-     *
-     * @see GetRecvLength() for read-only access to the length value
-     *
-     * Example:
-     * @code
-     * int bytes = recv(socket, client->GetRecvBuffer(), MAX_SIZE, 0);
-     * *client->GetRecvLengthPtr() = bytes;  // Update length
-     * @endcode
-     */
-    int *GetRecvLengthPtr()
-    {
-        return &m_recv_len;
-    }
-
-    /**
-     * @brief Gets a pointer to the send length variable.
-     *
-     * Returns a pointer to the internal variable tracking the number of valid
-     * bytes in the send buffer. This is primarily used to update the length
-     * after preparing data or after send() operations.
-     *
-     * @return int* Pointer to m_send_len for direct modification
-     *
-     * @warning Provides direct mutable access to the length variable. Incorrect
-     *          usage can lead to sending incorrect amounts of data.
-     *
-     * @note Typical usage: `*client->GetSendLengthPtr() = data_size;`
-     * @note Always ensure the value stays within [0,
-     * MAX_BUFFER_LENGHT_FOR_REQUESTS]
-     *
-     * @see GetSendLength() for read-only access to the length value
-     *
-     */
-    int *GetSendLengthPtr()
-    {
-        return &m_send_len;
-    }
+    int getLastBytesReceived() const;
 
     std::pair<int, std::string> getAddress() const;
 
@@ -299,9 +162,41 @@ class Client
 
     void disconnect();
 
-    bool isDisconnecting();
+    bool isDisconnecting() const;
 
     void showInfo(std::ostream &os) const;
+
+    /**
+     * @brief Buffer for receiving data from the client.
+     *
+     * Fixed-size buffer that stores incoming data from recv() operations.
+     * Size defined by MAX_BUFFER_LENGHT_FOR_REQUESTS to accommodate
+     * the maximum expected request size.
+     *
+     * @note Buffer contents are only valid up to m_recv_len bytes.
+     * @warning Not null-terminated by default; treat as binary data.
+     */
+    char m_recv_buffer[MAX_BUFFER_LENGHT_FOR_REQUESTS];
+
+    /**
+     * @brief Buffer for sending data to the client.
+     *
+     * Fixed-size buffer used to prepare and store outgoing data before
+     * send() operations. Size defined by MAX_BUFFER_LENGHT_FOR_REQUESTS
+     * to match the maximum request/response size.
+     *
+     * @note Buffer contents are only valid up to m_send_len bytes.
+     */
+    char m_send_buffer[MAX_BUFFER_LENGHT_FOR_REQUESTS];
+
+    int m_recv_len;
+    int m_send_len;
+
+    bool m_is_sending;
+
+    std::queue<std::string> m_outbound_message_queue;
+
+    std::mutex m_send_mtx;
 
   private:
     /* ----------------
@@ -362,31 +257,7 @@ class Client
      */
     SOCKET_TYPE m_sock;
 
-    /**
-     * @brief Buffer for receiving data from the client.
-     *
-     * Fixed-size buffer that stores incoming data from recv() operations.
-     * Size defined by MAX_BUFFER_LENGHT_FOR_REQUESTS to accommodate
-     * the maximum expected request size.
-     *
-     * @note Buffer contents are only valid up to m_recv_len bytes.
-     * @warning Not null-terminated by default; treat as binary data.
-     */
-    char m_recv_buffer[MAX_BUFFER_LENGHT_FOR_REQUESTS];
-
-    /**
-     * @brief Buffer for sending data to the client.
-     *
-     * Fixed-size buffer used to prepare and store outgoing data before
-     * send() operations. Size defined by MAX_BUFFER_LENGHT_FOR_REQUESTS
-     * to match the maximum request/response size.
-     *
-     * @note Buffer contents are only valid up to m_send_len bytes.
-     */
-    char m_send_buffer[MAX_BUFFER_LENGHT_FOR_REQUESTS];
-
-    int m_recv_len;
-    int m_send_len;
+    int m_last_bytes_received;
 
     /**
      * @brief Indicates whether the client is in the process of disconnecting.
@@ -400,7 +271,7 @@ class Client
      * (pendingOps == 0), the socket can be safely closed and the client context
      * freed.
      */
-    bool m_is_disconnecting;
+    std::atomic<bool> m_is_disconnecting;
 
 #ifdef _WIN32
     OVERLAPPED m_recv_overlapped{};
