@@ -134,7 +134,7 @@ void NetworkManager::showClients(std::ostream &os) const
     std::shared_lock lock(m_mtx);
 
     os << std::left << std::setfill(' ') << std::setw(10) << "Client Id" << std::setw(3) << "|" << std::setw(24)
-       << " Ip Address" << std::setw(3) << "|" << std::setw(5) << "Port" << std::setw(3) << "|" << std::setw(5)
+       << " Ip Address" << std::setw(3) << "|" << std::setw(6) << "Port" << std::setw(3) << "|" << std::setw(5)
        << "Refs" << std::setw(3) << "|" << std::setw(14) << "Disconnecting\n";
     os << "---------------------------------------------------------------------\n";
 

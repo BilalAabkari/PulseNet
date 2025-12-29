@@ -3,6 +3,7 @@
 #include "networking/Client.h"
 #include "networking/NetworkManager.h"
 #include "networking/ThreadPool.h"
+#include "networking/http/HttpMessageAssembler.h"
 #include "networking/http/HttpResponse.h"
 #include "utils/ConfigParser.h"
 #include "utils/Console.h"
@@ -42,7 +43,8 @@ int main()
     parser.read();
 
     /********** Initialize sockets ***********/
-    pulse::net::NetworkManager requestsListener(80, "127.0.0.1");
+    std::unique_ptr<pulse::net::TCPMessageAssembler> assembler = std::make_unique<pulse::net::HttpMessageAssembler>();
+    pulse::net::NetworkManager requestsListener(80, "127.0.0.1", 2, std::move(assembler));
 
     try
     {
