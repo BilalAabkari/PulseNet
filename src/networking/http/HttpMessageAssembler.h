@@ -1,4 +1,5 @@
 #pragma once
+#include "../LoggerManager.h"
 #include "../TCPMessageAssembler.h"
 #include "../constants.h"
 #include "HttpHelpers.h"
@@ -16,6 +17,9 @@ class HttpMessageAssembler : public TCPMessageAssembler
 
     virtual AssemblingResult feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
                                   int last_tcp_packet_len);
+
+    void setMaxRequestLineLength(int length);
+    void setMaxRequestHeaderBytes(int length);
 
   private:
     enum class TransferMode
@@ -79,30 +83,20 @@ class HttpMessageAssembler : public TCPMessageAssembler
         int i_start = 0, i_end = 0;
         int header_name_start = 0, header_name_end = 0;
         int header_value_start = 0, header_value_end = 0;
-    };
 
-    template <typename T> struct ParseResult
-    {
-        bool error = false;
-        std::string error_message;
-        std::string error_details;
-        bool continue_listening = false;
-        T value{};
+        int length_counter = 0, total_headers_counter = 0;
     };
-
-    using HEADER_LIST = std::unordered_map<std::string, std::string>;
-    using VersionParseResult = ParseResult<HttpVersion>;
-    using TransferModeInfo = ParseResult<std::pair<TransferMode, int>>;
 
     std::unordered_map<uint64_t, HttpStreamState> m_client_states;
-
     std::mutex m_mtx;
-
     bool m_assemble_chunked_requests;
 
     void resetState(HttpStreamState &state) const;
-
     HttpMethod parse_method(std::string_view part) const;
+    void log(std::string_view severity, std::string_view message);
+
+    int m_max_request_line_lenght = 4096;
+    int m_max_total_headers = 8192;
 };
 
 } // namespace pulse::net

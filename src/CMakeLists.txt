@@ -16,5 +16,6 @@ target_link_libraries(PulseNet PRIVATE
     networking
 )
 
+target_compile_definitions(networking PRIVATE $<$<CONFIG:Debug>:DEBUG>)
 
 

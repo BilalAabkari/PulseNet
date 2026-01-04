@@ -1,5 +1,6 @@
 #include "HttpMessageAssembler.h"
 
+#include "../LoggerManager.h"
 #include <algorithm>
 #include <charconv>
 
@@ -29,6 +30,7 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
     for (int i = 0; i < buffer_len; i++)
     {
         char c = buffer[i];
+        client_state.length_counter++;
 
         switch (client_state.state)
         {
@@ -58,6 +60,8 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                     if (client_state.method == HttpMethod::INVALID)
                     {
                         client_state.state = HttpState::STATE_ERROR;
+                        log("WARN", "Rejected http request of connection " + std::to_string(id) +
+                                        ": Invalid first line. Expected HTTP version or a method.");
                     }
                     else
                     {
@@ -67,6 +71,12 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                         client_state.i_end = i + 1;
                     }
                 }
+            }
+            else if (client_state.length_counter > m_max_request_line_lenght)
+            {
+                log("WARN",
+                    "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
+                client_state.state = HttpState::STATE_ERROR;
             }
             else if (static_cast<unsigned char>(c) <= 127)
             {
@@ -95,6 +105,12 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                     client_state.i_end = i + 1;
                 }
             }
+            else if (client_state.length_counter > m_max_request_line_lenght)
+            {
+                log("WARN",
+                    "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
+                client_state.state = HttpState::STATE_ERROR;
+            }
             else if (isdigit(static_cast<unsigned char>(c)))
             {
                 client_state.i_end++;
@@ -108,9 +124,16 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
         case HttpState::STATE_PARSE_RESPONSE_HEDAERS_START:
             if (client_state.i_end - client_state.i_start > 0 && c == '\n' && buffer[client_state.i_end] == '\r')
             {
+                client_state.length_counter = 0;
                 client_state.state = HttpState::STATE_PARSE_HEADER_NAME;
                 client_state.i_start = i + 1;
                 client_state.i_end = i + 1;
+            }
+            else if (client_state.length_counter > m_max_request_line_lenght)
+            {
+                log("WARN",
+                    "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
+                client_state.state = HttpState::STATE_ERROR;
             }
             else if (static_cast<unsigned char>(c) <= 127)
             {
@@ -133,6 +156,12 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                 client_state.i_end = i + 1;
                 client_state.state = HttpState::STATE_PARSE_REQUEST_HTTP_VERSION;
             }
+            else if (client_state.length_counter > m_max_request_line_lenght)
+            {
+                log("WARN",
+                    "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
+                client_state.state = HttpState::STATE_ERROR;
+            }
             else if (static_cast<unsigned char>(c) <= 127)
             {
                 client_state.i_end++;
@@ -152,6 +181,7 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                     client_state.state = HttpState::STATE_PARSE_HEADER_NAME;
                     client_state.i_start = i + 1;
                     client_state.i_end = i + 1;
+                    client_state.length_counter = 0;
                 }
                 else if (part == "HTTP/1.1")
                 {
@@ -159,11 +189,18 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                     client_state.state = HttpState::STATE_PARSE_HEADER_NAME;
                     client_state.i_start = i + 1;
                     client_state.i_end = i + 1;
+                    client_state.length_counter = 0;
                 }
                 else
                 {
                     client_state.state = HttpState::STATE_ERROR;
                 }
+            }
+            else if (client_state.length_counter > m_max_request_line_lenght)
+            {
+                log("WARN",
+                    "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
+                client_state.state = HttpState::STATE_ERROR;
             }
             else if (static_cast<unsigned char>(c) <= 127)
             {
@@ -261,6 +298,16 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
     return result;
 }
 
+void HttpMessageAssembler::setMaxRequestLineLength(int length)
+{
+    m_max_request_line_lenght = length;
+}
+
+void HttpMessageAssembler::setMaxRequestHeaderBytes(int length)
+{
+    m_max_total_headers = length;
+}
+
 void HttpMessageAssembler::resetState(HttpStreamState &state) const
 {
     state.transfer_mode = TransferMode::UNKNOWN;
@@ -308,6 +355,13 @@ HttpMessageAssembler::HttpMethod HttpMessageAssembler::parse_method(std::string_
     }
 
     return HttpMethod::INVALID;
+}
+
+void HttpMessageAssembler::log(std::string_view severity, std::string_view message)
+{
+#ifdef DEBUG
+    LoggerManager::get_logger()->write(severity, message);
+#endif
 }
 
 } // namespace pulse::net
