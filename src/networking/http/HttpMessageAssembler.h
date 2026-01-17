@@ -5,6 +5,7 @@
 #include "HttpHelpers.h"
 #include "HttpResponse.h"
 #include <mutex>
+#include <string>
 #include <unordered_map>
 
 namespace pulse::net
@@ -43,6 +44,8 @@ class HttpMessageAssembler : public TCPMessageAssembler
         STATE_PARSE_HEADER_NAME,
         STATE_PARSE_HEADER_VALUE,
         STATE_PARSE_BODY,
+        STATE_PARSE_CHUNK_SIZE,
+        STATE_DONE,
         STATE_ERROR
     };
 
@@ -97,10 +100,12 @@ class HttpMessageAssembler : public TCPMessageAssembler
 
     void resetState(HttpStreamState &state) const;
     HttpMethod parse_method(std::string_view part) const;
+    bool parse_number(const std::string &s, int &result) const;
     void log(std::string_view severity, std::string_view message);
 
     int m_max_request_line_lenght = 4096;
     int m_max_total_headers = 8192;
+    int max_body_size = 1E6;
 
     bool m_logs_enabled = false;
 };

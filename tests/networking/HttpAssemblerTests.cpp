@@ -21,6 +21,56 @@ TEST(HttpParserTest, InvalidMethod)
     EXPECT_TRUE(result.error);
 }
 
+TEST(HttpParserTest, EmptyHeaderFieldName)
+{
+    pulse::net::HttpMessageAssembler assembler;
+    char buffer1[] = "GET / HTTP/1.1\r\n: chunked\r\n\r\nhello";
+    int length1 = sizeof(buffer1) - 1;
+
+    pulse::net::HttpMessageAssembler::AssemblingResult result = assembler.feed(1, buffer1, length1, 8096, length1);
+
+    EXPECT_TRUE(result.error);
+
+    char buffer2[] = "GET / HTTP/1.1\r\n: chunked\r\n\r\nhello";
+    int length2 = sizeof(buffer2) - 1;
+
+    result = assembler.feed(2, buffer2, length2, 8096, length2);
+
+    EXPECT_TRUE(result.error);
+
+    char buffer3[] = "GET / HTTP/1.1\r\n  : chunked\r\n\r\nhello";
+    int length3 = sizeof(buffer3) - 1;
+
+    result = assembler.feed(3, buffer3, length3, 8096, length3);
+
+    EXPECT_TRUE(result.error);
+}
+
+TEST(HttpParserTest, EmptyHeaderFieldValue)
+{
+    pulse::net::HttpMessageAssembler assembler;
+    char buffer1[] = "GET / HTTP/1.1\r\nContent-Length:  \r\n\r\nhello";
+    int length1 = sizeof(buffer1) - 1;
+
+    pulse::net::HttpMessageAssembler::AssemblingResult result = assembler.feed(1, buffer1, length1, 8096, length1);
+
+    EXPECT_TRUE(result.error);
+
+    char buffer2[] = "GET / HTTP/1.1\r\nContent-Length: \r\n\r\nhello";
+    int length2 = sizeof(buffer2) - 1;
+
+    result = assembler.feed(2, buffer2, length2, 8096, length2);
+
+    EXPECT_TRUE(result.error);
+
+    char buffer3[] = "GET / HTTP/1.1\r\nContent-Length:\r\n\r\nhello";
+    int length3 = sizeof(buffer3) - 1;
+
+    result = assembler.feed(3, buffer3, length3, 8096, length3);
+
+    EXPECT_TRUE(result.error);
+}
+
 TEST(HttpParserTest, UriTooLong)
 {
     pulse::net::HttpMessageAssembler assembler;

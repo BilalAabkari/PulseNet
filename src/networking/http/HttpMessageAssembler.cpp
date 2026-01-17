@@ -1,6 +1,7 @@
 #include "HttpMessageAssembler.h"
 
 #include "../LoggerManager.h"
+#include "../Utils.h"
 #include <algorithm>
 #include <charconv>
 
@@ -213,21 +214,69 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                 client_state.state = HttpState::STATE_ERROR;
             }
             break;
-        case HttpState::STATE_PARSE_HEADER_NAME:
+        case HttpState::STATE_PARSE_HEADER_NAME: {
+
             client_state.total_headers_counter++;
-            if (c == ':' && client_state.i_end - client_state.i_start > 0)
+            int size = client_state.i_end - client_state.i_start;
+
+            if (c == ':' && size > 0)
             {
-                client_state.header_name_start = client_state.i_start;
-                client_state.header_name_end = client_state.i_end;
-                client_state.state = HttpState::STATE_PARSE_HEADER_VALUE;
-                client_state.i_start = i + 1;
-                client_state.i_end = i + 1;
+
+                while (*(buffer + client_state.i_start) == ' ' && client_state.i_start < client_state.i_end)
+                    client_state.i_start++;
+
+                while (*(buffer + client_state.i_end) == ' ' && client_state.i_start < client_state.i_end)
+                    client_state.i_end--;
+
+                size = client_state.i_end - client_state.i_start;
+
+                if (size > 0)
+                {
+                    client_state.header_name_start = client_state.i_start;
+                    client_state.header_name_end = client_state.i_end;
+                    client_state.state = HttpState::STATE_PARSE_HEADER_VALUE;
+                    client_state.i_start = i + 1;
+                    client_state.i_end = i + 1;
+                }
+                else
+                {
+                    client_state.state = HttpState::STATE_ERROR;
+                }
+            }
+            else if (c == ':' && size == 0)
+            {
+                client_state.state = HttpState::STATE_ERROR;
             }
             else if (c == '\n' && buffer[i - 1] == '\r' && client_state.i_end - client_state.i_start == 1)
             {
-                client_state.i_start = i + 1;
-                client_state.i_end = i + 1;
-                client_state.state = HttpState::STATE_PARSE_BODY;
+
+                auto it = client_state.headers.find("transfer-mode");
+                if (it != client_state.headers.end())
+                {
+                }
+                else
+                {
+                    auto it = client_state.headers.find("content-length");
+                    if (it != client_state.headers.end())
+                    {
+                        int length = 0;
+                        if (parse_number(it->second, length))
+                        {
+                            client_state.state = HttpState::STATE_PARSE_BODY;
+                            client_state.body_lenght = length;
+                            client_state.i_start = i + 1;
+                            client_state.i_end = i + 1;
+                        }
+                        else
+                        {
+                            client_state.state = HttpState::STATE_ERROR;
+                        }
+                    }
+                    else
+                    {
+                        client_state.state = HttpState::STATE_DONE;
+                    }
+                }
             }
             else if (client_state.total_headers_counter > m_max_total_headers)
             {
@@ -245,10 +294,17 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                 client_state.state = HttpState::STATE_ERROR;
             }
             break;
+        }
         case HttpState::STATE_PARSE_HEADER_VALUE:
             client_state.total_headers_counter++;
-            if (client_state.i_end - client_state.i_start > 2 && c == '\n' && buffer[client_state.i_end - 1] == '\r')
+            if (client_state.i_end - client_state.i_start > 0 && c == '\n' && buffer[client_state.i_end - 1] == '\r')
             {
+                while (*(buffer + client_state.i_start) == ' ' && client_state.i_start < client_state.i_end)
+                    client_state.i_start++;
+
+                while (*(buffer + client_state.i_end) == ' ' && client_state.i_start < client_state.i_end)
+                    client_state.i_end--;
+
                 std::string_view header_name(buffer + client_state.header_name_start,
                                              client_state.header_name_end - client_state.header_name_start);
 
@@ -261,7 +317,8 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                 }
                 else
                 {
-                    client_state.headers.emplace(header_name, header_value); // TODO: IF KEY EXISTS, APPEND
+                    // TODO: IF KEY EXISTS, APPEND
+                    client_state.headers.emplace(Utils::toLowerAscii(header_name), header_value);
                     client_state.state = HttpState::STATE_PARSE_HEADER_NAME;
                     client_state.i_start = i + 1;
                     client_state.i_end = i + 1;
@@ -269,7 +326,6 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
             }
             else if (client_state.total_headers_counter > m_max_total_headers)
             {
-                client_state.total_headers_counter++;
                 log("WARN", "Rejected http request of connection " + std::to_string(id) +
                                 ": Invalid headers. Maximum number of bytes for "
                                 "headers exceded");
@@ -284,6 +340,25 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                 client_state.state = HttpState::STATE_ERROR;
             }
             break;
+        case HttpState::STATE_PARSE_BODY: {
+            client_state.i_end++;
+            int size = client_state.i_end - client_state.i_start;
+            if (size > max_body_size)
+            {
+                log("WARN", "Rejected http request of connection " + std::to_string(id) +
+                                ": Invalid headers. Maximum number of bytes for "
+                                "body exceded");
+                client_state.state = HttpState::STATE_ERROR;
+            }
+            else if (size == client_state.body_lenght)
+            {
+                client_state.state = HttpState::STATE_DONE;
+                std::string body(buffer + client_state.i_start, client_state.body_lenght);
+            }
+            break;
+        }
+        case HttpState::STATE_DONE:
+            break;
         case HttpState::STATE_ERROR:
             break;
         default:
@@ -291,6 +366,10 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
         }
 
         if (client_state.state == HttpState::STATE_ERROR)
+        {
+            break;
+        }
+        else if (client_state.state == HttpState::STATE_DONE)
         {
             break;
         }
@@ -386,6 +465,24 @@ HttpMessageAssembler::HttpMethod HttpMessageAssembler::parse_method(std::string_
     }
 
     return HttpMethod::INVALID;
+}
+
+bool HttpMessageAssembler::parse_number(const std::string &s, int &result) const
+{
+    bool is_quoted = s.size() > 2 && s.front() == '"' && s[s.size() - 1] == '"';
+
+    const char *first = s.data();
+    const char *last = first + s.size();
+
+    if (is_quoted)
+    {
+        first++;
+        last--;
+    }
+
+    auto [ptr, ec] = std::from_chars(first, last, result);
+
+    return ec == std::errc{};
 }
 
 void HttpMessageAssembler::log(std::string_view severity, std::string_view message)
