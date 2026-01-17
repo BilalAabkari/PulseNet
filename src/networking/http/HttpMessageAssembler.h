@@ -21,6 +21,9 @@ class HttpMessageAssembler : public TCPMessageAssembler
     void setMaxRequestLineLength(int length);
     void setMaxRequestHeaderBytes(int length);
 
+    void enableLogs();
+    void disableLogs();
+
   private:
     enum class TransferMode
     {
@@ -67,6 +70,7 @@ class HttpMessageAssembler : public TCPMessageAssembler
 
     struct HttpStreamState
     {
+        int pos = 0;
         TransferMode transfer_mode = TransferMode::UNKNOWN;
         int body_lenght = -1;
         HttpVersion http_version = HttpVersion::UNKNOWN;
@@ -97,6 +101,8 @@ class HttpMessageAssembler : public TCPMessageAssembler
 
     int m_max_request_line_lenght = 4096;
     int m_max_total_headers = 8192;
+
+    bool m_logs_enabled = false;
 };
 
 } // namespace pulse::net

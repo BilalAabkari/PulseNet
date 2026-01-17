@@ -16,7 +16,3 @@ if(WIN32)
     target_link_libraries(networking PRIVATE Ws2_32 Mswsock )
 endif()
 
-target_include_directories(networking PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/http
-)

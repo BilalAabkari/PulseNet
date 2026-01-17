@@ -27,8 +27,10 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
 
     HttpMessageAssembler::AssemblingResult result;
 
-    for (int i = 0; i < buffer_len; i++)
+    while (client_state.pos < buffer_len)
     {
+        int i = client_state.pos;
+
         char c = buffer[i];
         client_state.length_counter++;
 
@@ -72,7 +74,7 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                     }
                 }
             }
-            else if (client_state.length_counter > m_max_request_line_lenght)
+            else if (client_state.length_counter > 8)
             {
                 log("WARN",
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
@@ -212,6 +214,7 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
             }
             break;
         case HttpState::STATE_PARSE_HEADER_NAME:
+            client_state.total_headers_counter++;
             if (c == ':' && client_state.i_end - client_state.i_start > 0)
             {
                 client_state.header_name_start = client_state.i_start;
@@ -226,6 +229,13 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                 client_state.i_end = i + 1;
                 client_state.state = HttpState::STATE_PARSE_BODY;
             }
+            else if (client_state.total_headers_counter > m_max_total_headers)
+            {
+                log("WARN", "Rejected http request of connection " + std::to_string(id) +
+                                ": Invalid headers. Maximum number of bytes for "
+                                "headers exceded");
+                client_state.state = HttpState::STATE_ERROR;
+            }
             else if (static_cast<unsigned char>(c) <= 127)
             {
                 client_state.i_end++;
@@ -236,6 +246,7 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
             }
             break;
         case HttpState::STATE_PARSE_HEADER_VALUE:
+            client_state.total_headers_counter++;
             if (client_state.i_end - client_state.i_start > 2 && c == '\n' && buffer[client_state.i_end - 1] == '\r')
             {
                 std::string_view header_name(buffer + client_state.header_name_start,
@@ -250,11 +261,19 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                 }
                 else
                 {
-                    client_state.headers.emplace(header_name, header_value);
+                    client_state.headers.emplace(header_name, header_value); // TODO: IF KEY EXISTS, APPEND
                     client_state.state = HttpState::STATE_PARSE_HEADER_NAME;
                     client_state.i_start = i + 1;
                     client_state.i_end = i + 1;
                 }
+            }
+            else if (client_state.total_headers_counter > m_max_total_headers)
+            {
+                client_state.total_headers_counter++;
+                log("WARN", "Rejected http request of connection " + std::to_string(id) +
+                                ": Invalid headers. Maximum number of bytes for "
+                                "headers exceded");
+                client_state.state = HttpState::STATE_ERROR;
             }
             else if (static_cast<unsigned char>(c) <= 127)
             {
@@ -275,6 +294,8 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
         {
             break;
         }
+
+        client_state.pos++;
     }
 
     if (client_state.state == HttpState::STATE_ERROR)
@@ -306,6 +327,16 @@ void HttpMessageAssembler::setMaxRequestLineLength(int length)
 void HttpMessageAssembler::setMaxRequestHeaderBytes(int length)
 {
     m_max_total_headers = length;
+}
+
+void HttpMessageAssembler::enableLogs()
+{
+    m_logs_enabled = true;
+}
+
+void HttpMessageAssembler::disableLogs()
+{
+    m_logs_enabled = false;
 }
 
 void HttpMessageAssembler::resetState(HttpStreamState &state) const
@@ -359,9 +390,8 @@ HttpMessageAssembler::HttpMethod HttpMessageAssembler::parse_method(std::string_
 
 void HttpMessageAssembler::log(std::string_view severity, std::string_view message)
 {
-#ifdef DEBUG
-    LoggerManager::get_logger()->write(severity, message);
-#endif
+    if (m_logs_enabled)
+        LoggerManager::get_logger()->write(severity, message);
 }
 
 } // namespace pulse::net

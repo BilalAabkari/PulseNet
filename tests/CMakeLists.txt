@@ -1,9 +1,3 @@
-cmake_minimum_required (VERSION 3.8)
-project ("PulseNet Tests")
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 include(FetchContent)
 
 FetchContent_Declare(
@@ -19,12 +13,15 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-target_compile_definitions(networking PRIVATE $<$<CONFIG:Debug>:DEBUG>)
+set(TEST_SOURCES
+    networking/HttpAssemblerTests.cpp
+)
 
-set(TEST_SOURCES networking/HttpAssemblerTests.cpp)
-
-add_executable(PulseNetTests TEST_SOURCES)
+add_executable(PulseNetTests ${TEST_SOURCES})
 
 target_link_libraries(PulseNetTests PRIVATE
-    networking GTest::gtest_main
+    pulsenet_lib GTest::gtest_main
 )
+
+include(GoogleTest)
+gtest_discover_tests(PulseNetTests)

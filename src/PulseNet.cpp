@@ -43,7 +43,9 @@ int main()
     parser.read();
 
     /********** Initialize sockets ***********/
-    std::unique_ptr<pulse::net::TCPMessageAssembler> assembler = std::make_unique<pulse::net::HttpMessageAssembler>();
+    std::unique_ptr<pulse::net::HttpMessageAssembler> assembler = std::make_unique<pulse::net::HttpMessageAssembler>();
+    assembler->enableLogs();
+
     pulse::net::NetworkManager requestsListener(80, "127.0.0.1", 2, std::move(assembler));
 
     try
