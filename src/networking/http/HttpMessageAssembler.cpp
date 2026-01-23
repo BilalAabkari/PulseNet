@@ -260,15 +260,25 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
                     if (it != client_state.headers.end())
                     {
                         int length = 0;
-                        if (parse_number(it->second, length))
+                        if (parse_number(it->second, length) && length <= m_max_body_size)
                         {
                             client_state.state = HttpState::STATE_PARSE_BODY;
                             client_state.body_lenght = length;
                             client_state.i_start = i + 1;
                             client_state.i_end = i + 1;
                         }
+                        else if (length > m_max_body_size)
+                        {
+                            log("WARN", "Rejected http request of connection " + std::to_string(id) +
+                                            ": Invalid headers. Maximum number "
+                                            "of bytes for "
+                                            "headers exceded");
+                            client_state.state = HttpState::STATE_ERROR;
+                        }
                         else
                         {
+                            log("WARN", "Rejected http request of connection " + std::to_string(id) +
+                                            ": Could not parse content length octets");
                             client_state.state = HttpState::STATE_ERROR;
                         }
                     }
@@ -343,7 +353,7 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
         case HttpState::STATE_PARSE_BODY: {
             client_state.i_end++;
             int size = client_state.i_end - client_state.i_start;
-            if (size > max_body_size)
+            if (size > m_max_body_size)
             {
                 log("WARN", "Rejected http request of connection " + std::to_string(id) +
                                 ": Invalid headers. Maximum number of bytes for "
@@ -406,6 +416,11 @@ void HttpMessageAssembler::setMaxRequestLineLength(int length)
 void HttpMessageAssembler::setMaxRequestHeaderBytes(int length)
 {
     m_max_total_headers = length;
+}
+
+void HttpMessageAssembler::setMaxBodySize(int length)
+{
+    m_max_body_size = length;
 }
 
 void HttpMessageAssembler::enableLogs()

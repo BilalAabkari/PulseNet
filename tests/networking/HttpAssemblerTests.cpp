@@ -98,3 +98,21 @@ TEST(HttpParserTest, TotalHeaderBytesTooLong)
     result = assembler.feed(2, buffer, length, 8096, length);
     EXPECT_TRUE(result.error);
 }
+
+TEST(HttpParserTest, BodyTooLong)
+{
+    pulse::net::HttpMessageAssembler assembler;
+
+    char buffer[] = "GET /index.html HTTP/1.1\r\nContent-length: 9\r\n\r\n"
+                    "Too large";
+    int length = sizeof(buffer) - 1;
+
+    pulse::net::HttpMessageAssembler::AssemblingResult result = assembler.feed(1, buffer, length, 8096, length);
+
+    EXPECT_FALSE(result.error);
+
+    assembler.setMaxBodySize(6);
+
+    result = assembler.feed(2, buffer, length, 8096, length);
+    EXPECT_TRUE(result.error);
+}

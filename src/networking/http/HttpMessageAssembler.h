@@ -21,6 +21,7 @@ class HttpMessageAssembler : public TCPMessageAssembler
 
     void setMaxRequestLineLength(int length);
     void setMaxRequestHeaderBytes(int length);
+    void setMaxBodySize(int length);
 
     void enableLogs();
     void disableLogs();
@@ -105,7 +106,7 @@ class HttpMessageAssembler : public TCPMessageAssembler
 
     int m_max_request_line_lenght = 4096;
     int m_max_total_headers = 8192;
-    int max_body_size = 1E6;
+    int m_max_body_size = 1E6;
 
     bool m_logs_enabled = false;
 };
