@@ -1,19 +1,19 @@
-#include "HttpResponse.h"
+#include "HttpMessage.h"
 
 namespace pulse::net
 {
 
-HttpResponse::HttpResponse(HttpVersion version, HttpStatus status, std::string body)
+HttpMessage::HttpMessage(HttpVersion version, HttpStatus status, std::string body)
     : m_version(version), m_status(status), m_body(body)
 {
     addHeader("Content-Length", std::to_string(body.size()));
 }
 
-HttpResponse::~HttpResponse()
+HttpMessage::~HttpMessage()
 {
 }
 
-std::string HttpResponse::serialize() const
+std::string HttpMessage::serialize() const
 {
 
     std::ostringstream oss;
@@ -44,17 +44,17 @@ std::string HttpResponse::serialize() const
     return oss.str();
 }
 
-void HttpResponse::setHttpStatus(HttpStatus status)
+void HttpMessage::setHttpStatus(HttpStatus status)
 {
     m_status = status;
 }
 
-void HttpResponse::setBody(std::string &&body)
+void HttpMessage::setBody(std::string &&body)
 {
     m_body = std::move(body);
 }
 
-void HttpResponse::addHeader(const std::string &name, const std::string &value)
+void HttpMessage::addHeader(const std::string &name, const std::string &value)
 {
     auto it = m_headers.find(name);
     if (it != m_headers.end())

@@ -4,7 +4,6 @@
 #include "networking/NetworkManager.h"
 #include "networking/ThreadPool.h"
 #include "networking/http/HttpMessageAssembler.h"
-#include "networking/http/HttpResponse.h"
 #include "utils/ConfigParser.h"
 #include "utils/Console.h"
 #include "utils/Logger.h"
@@ -46,11 +45,11 @@ int main()
     std::unique_ptr<pulse::net::HttpMessageAssembler> assembler = std::make_unique<pulse::net::HttpMessageAssembler>();
     assembler->enableLogs();
 
-    pulse::net::NetworkManager requestsListener(80, "127.0.0.1", 2, std::move(assembler));
+    pulse::net::NetworkManager<pulse::net::HttpMessageAssembler> server(80, "127.0.0.1", 2, std::move(assembler));
 
     try
     {
-        requestsListener.startListening();
+        server.startListening();
     }
     catch (const std::exception &ex)
     {
@@ -60,32 +59,32 @@ int main()
     }
 
     logger.log(LogType::NETWORK, LogSeverity::LOG_INFO,
-               "Socket listener created successfully at " + requestsListener.getIp() + ":" +
-                   std::to_string(requestsListener.getPort()));
+               "Socket listener created successfully at " + server.getIp() + ":" + std::to_string(server.getPort()));
 
     pulse::utils::Console console;
-    registerCommands(console, requestsListener);
+    registerCommands(console, server);
 
-    pulse::net::ThreadPool test(1, [&requestsListener]() {
-        std::unique_ptr<pulse::net::NetworkManager::Request> request = requestsListener.next();
+    pulse::net::ThreadPool test(1, [&server]() {
+        auto request = server.next();
+        pulse::net::HttpMessage message = request->message;
 
         std::cout << "*********************************************************"
                      "********\n";
         std::cout << "CLIENT ID: " << std::to_string(request->client.id)
                   << "\nIP ADDRESS: " << request->client.ip_address
                   << "\nPORT: " << std::to_string(request->client.port) << "\n\n";
-        std::cout << request->message;
+        std::cout << message.serialize();
 
         std::ostringstream response_body;
         response_body << "{\n"
                       << "\"message\" : \"Message received!\"\n"
                       << "}";
 
-        pulse::net::HttpResponse response(pulse::net::HttpVersion::HTTP_1_1, pulse::net::HttpStatus::OK,
-                                          response_body.str());
+        pulse::net::HttpMessage response(pulse::net::HttpVersion::HTTP_1_1, pulse::net::HttpStatus::OK,
+                                         response_body.str());
         response.addHeader("Content-Type", "application/json");
 
-        requestsListener.send(request->client.id, response.serialize());
+        server.send(request->client.id, response.serialize());
     });
 
     test.run();

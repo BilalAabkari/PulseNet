@@ -7,13 +7,14 @@
 namespace pulse::net
 {
 
-class HttpResponse : public JSONSerializable
+class HttpMessage : public JSONSerializable
 {
 
   public:
-    HttpResponse(HttpVersion version, HttpStatus status, std::string body);
+    HttpMessage() = default;
+    HttpMessage(HttpVersion version, HttpStatus status, std::string body);
 
-    virtual ~HttpResponse();
+    virtual ~HttpMessage();
 
     virtual std::string serialize() const;
 

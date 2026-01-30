@@ -399,7 +399,7 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
         std::string json_body = oss.str();
         size_t size = json_body.size();
 
-        HttpResponse response(client_state.http_version, HttpStatus::BAD_REQUEST, std::move(json_body));
+        HttpMessage response(client_state.http_version, HttpStatus::BAD_REQUEST, std::move(json_body));
 
         response.addHeader("Content-Lenght", std::to_string(size));
         result.error_message = response.serialize();

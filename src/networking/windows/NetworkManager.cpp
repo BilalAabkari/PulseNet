@@ -3,13 +3,17 @@
 
 #include "../../utils/Logger.h"
 #include "../NetworkManager.h"
+#include "../http/HttpMessageAssembler.h"
 
 // clang-format on
 namespace pulse::net
 {
+template class NetworkManager<HttpMessageAssembler>;
+template class NetworkManager<DefaultMessageAssembler>;
 
-NetworkManager::NetworkManager(int port, std::string ip_address, int assembler_workers,
-                               std::unique_ptr<TCPMessageAssembler> assembler)
+template <typename Assembler>
+NetworkManager<Assembler>::NetworkManager(int port, std::string ip_address, int assembler_workers,
+                                          std::unique_ptr<Assembler> assembler)
     : m_listening(false), m_assembler_thread_pool(assembler_workers, [this]() { this->assemblerWorker(); }),
       m_ip_address(ip_address), m_port(port)
 {
@@ -28,7 +32,7 @@ NetworkManager::NetworkManager(int port, std::string ip_address, int assembler_w
 
     if (!assembler)
     {
-        m_assembler = std::make_unique<DefaultMessageAssembler>();
+        throw std::invalid_argument("Assembler cannot be null");
     }
     else
     {
@@ -36,21 +40,22 @@ NetworkManager::NetworkManager(int port, std::string ip_address, int assembler_w
     }
 }
 
-void NetworkManager::stop()
+template <typename Assembler> void NetworkManager<Assembler>::stop()
 {
 }
 
-std::string NetworkManager::getIp() const
+template <typename Assembler> std::string NetworkManager<Assembler>::getIp() const
 {
     return m_ip_address;
 }
 
-int NetworkManager::getPort() const
+template <typename Assembler> int NetworkManager<Assembler>::getPort() const
 {
     return m_port;
 }
 
-Client *NetworkManager::addClient(uint64_t id, int port, std::string ipAddress, SOCKET sock)
+template <typename Assembler>
+Client *NetworkManager<Assembler>::addClient(uint64_t id, int port, std::string ipAddress, SOCKET sock)
 {
     std::unique_lock lock(m_mtx);
 
@@ -62,7 +67,7 @@ Client *NetworkManager::addClient(uint64_t id, int port, std::string ipAddress, 
     return m_client_list.at(id).get();
 }
 
-Client *NetworkManager::getClient(uint64_t id)
+template <typename Assembler> Client *NetworkManager<Assembler>::getClient(uint64_t id)
 {
     std::shared_lock lock(m_mtx);
 
@@ -79,12 +84,13 @@ Client *NetworkManager::getClient(uint64_t id)
     }
 }
 
-std::unique_ptr<NetworkManager::Request> NetworkManager::next()
+template <typename Assembler>
+std::unique_ptr<typename NetworkManager<Assembler>::Request> NetworkManager<Assembler>::next()
 {
     return m_requests_queue.pop();
 }
 
-void NetworkManager::terminateClient(uint64_t id)
+template <typename Assembler> void NetworkManager<Assembler>::terminateClient(uint64_t id)
 {
     std::lock_guard lock(m_mtx);
     auto i = m_client_list.find(id);
@@ -96,7 +102,7 @@ void NetworkManager::terminateClient(uint64_t id)
     }
 }
 
-void NetworkManager::setupSocket()
+template <typename Assembler> void NetworkManager<Assembler>::setupSocket()
 {
     WSADATA wsaData;
 
@@ -123,13 +129,13 @@ void NetworkManager::setupSocket()
     }
 }
 
-void NetworkManager::closeSocket()
+template <typename Assembler> void NetworkManager<Assembler>::closeSocket()
 {
     closesocket(m_server_socket);
     WSACleanup();
 }
 
-void NetworkManager::showClients(std::ostream &os) const
+template <typename Assembler> void NetworkManager<Assembler>::showClients(std::ostream &os) const
 {
     std::shared_lock lock(m_mtx);
 
@@ -144,7 +150,7 @@ void NetworkManager::showClients(std::ostream &os) const
     }
 }
 
-void NetworkManager::startListening()
+template <typename Assembler> void NetworkManager<Assembler>::startListening()
 {
     setupSocket();
 
@@ -316,7 +322,7 @@ void NetworkManager::startListening()
     m_assembler_thread_pool.run();
 }
 
-void NetworkManager::send(uint64_t id, const std::string &message)
+template <typename Assembler> void NetworkManager<Assembler>::send(uint64_t id, const std::string &message)
 {
     Logger &logger = Logger::getInstance();
 
@@ -351,7 +357,9 @@ void NetworkManager::send(uint64_t id, const std::string &message)
     }
 }
 
-std::unique_ptr<NetworkManager::Request> NetworkManager::createRequest(Client &client)
+template <typename Assembler>
+std::unique_ptr<typename NetworkManager<Assembler>::Request> NetworkManager<Assembler>::createRequest(
+    Client &client, Assembler::MessageType message)
 {
 
     std::unique_ptr<Request> request = std::make_unique<Request>();
@@ -360,11 +368,12 @@ std::unique_ptr<NetworkManager::Request> NetworkManager::createRequest(Client &c
     std::pair<int, std::string> address = client.getAddress();
     request->client.ip_address = std::move(address.second);
     request->client.port = address.first;
+    request->message = std::move(message);
 
     return request;
 }
 
-bool NetworkManager::postAcceptExEvent(AcceptContext &accept_context)
+template <typename Assembler> bool NetworkManager<Assembler>::postAcceptExEvent(AcceptContext &accept_context)
 {
     Logger &logger = Logger::getInstance();
 
@@ -410,7 +419,7 @@ bool NetworkManager::postAcceptExEvent(AcceptContext &accept_context)
     }
 }
 
-void NetworkManager::postReceiveEvent(Client &client)
+template <typename Assembler> void NetworkManager<Assembler>::postReceiveEvent(Client &client)
 {
     Logger &logger = Logger::getInstance();
 
@@ -450,7 +459,7 @@ void NetworkManager::postReceiveEvent(Client &client)
     }
 }
 
-void NetworkManager::postSendEvent(Client &client, std::string message)
+template <typename Assembler> void NetworkManager<Assembler>::postSendEvent(Client &client, std::string message)
 {
     Logger &logger = Logger::getInstance();
 
@@ -509,7 +518,8 @@ void NetworkManager::postSendEvent(Client &client, std::string message)
     }
 }
 
-std::pair<int, std::string> NetworkManager::getRemoteAddressFromAcceptContext(AcceptContext &accept_context)
+template <typename Assembler>
+std::pair<int, std::string> NetworkManager<Assembler>::getRemoteAddressFromAcceptContext(AcceptContext &accept_context)
 {
 
     sockaddr_in remote_in{};
@@ -527,7 +537,7 @@ std::pair<int, std::string> NetworkManager::getRemoteAddressFromAcceptContext(Ac
     return {client_port, client_ip};
 }
 
-void NetworkManager::assemblerWorker()
+template <typename Assembler> void NetworkManager<Assembler>::assemblerWorker()
 {
     while (m_listening)
     {
@@ -536,7 +546,7 @@ void NetworkManager::assemblerWorker()
         if (client)
         {
 
-            TCPMessageAssembler::AssemblingResult result =
+            typename Assembler::AssemblingResult result =
                 m_assembler->feed(client->getId(), client->m_recv_buffer, client->m_recv_len,
                                   MAX_BUFFER_LENGHT_FOR_REQUESTS, client->getLastBytesReceived());
 
@@ -548,10 +558,9 @@ void NetworkManager::assemblerWorker()
             else
             {
 
-                for (std::string message : result.messages)
+                for (typename Assembler::MessageType message : result.messages)
                 {
-                    std::unique_ptr<Request> r = createRequest(*client);
-                    r->message = std::move(message);
+                    std::unique_ptr<Request> r = createRequest(*client, std::move(message));
                     m_requests_queue.push(std::move(r));
                 }
 

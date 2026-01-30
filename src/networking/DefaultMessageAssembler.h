@@ -5,7 +5,7 @@
 namespace pulse::net
 {
 
-class DefaultMessageAssembler : public TCPMessageAssembler
+class DefaultMessageAssembler : public TCPMessageAssembler<std::string>
 {
   public:
     ~DefaultMessageAssembler() = default;

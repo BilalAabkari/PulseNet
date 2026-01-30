@@ -6,12 +6,14 @@
 namespace pulse::net
 {
 
-class TCPMessageAssembler
+template <typename T> class TCPMessageAssembler
 {
   public:
+    using MessageType = T;
+
     struct AssemblingResult
     {
-        std::vector<std::string> messages;
+        std::vector<MessageType> messages;
         bool error = false;
         std::string error_message;
     };

@@ -3,7 +3,7 @@
 #include "../TCPMessageAssembler.h"
 #include "../constants.h"
 #include "HttpHelpers.h"
-#include "HttpResponse.h"
+#include "HttpMessage.h"
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -11,7 +11,7 @@
 namespace pulse::net
 {
 
-class HttpMessageAssembler : public TCPMessageAssembler
+class HttpMessageAssembler : public TCPMessageAssembler<HttpMessage>
 {
   public:
     HttpMessageAssembler(bool assemble_chunked_requests = true);

@@ -43,13 +43,15 @@ namespace pulse::net
  * This class manages the setup, control of network sockets and listeners.
  */
 
-class NetworkManager
+template <typename Assembler> class NetworkManager
 {
   public:
+    using MessageType = typename Assembler::MessageType;
+
     struct Request
     {
         ClientDto client;
-        std::string message;
+        MessageType message;
     };
 
     /* ----------------
@@ -57,7 +59,7 @@ class NetworkManager
      * ----------------
      */
     NetworkManager(int port, std::string ip_address = ANY_IP, int assembler_workers = 2,
-                   std::unique_ptr<TCPMessageAssembler> assembler = nullptr);
+                   std::unique_ptr<Assembler> assembler = nullptr);
 
     NetworkManager(const NetworkManager &nm) = delete;
     NetworkManager(const NetworkManager &&nm) = delete;
@@ -98,7 +100,7 @@ class NetworkManager
     /*
      * @bried Creates a request after reveiving from client
      */
-    std::unique_ptr<Request> createRequest(Client &client);
+    std::unique_ptr<Request> createRequest(Client &client, Assembler::MessageType message);
 
     void terminateClient(uint64_t id);
 
@@ -250,7 +252,7 @@ class NetworkManager
 
     ThreadPool m_assembler_thread_pool;
 
-    std::unique_ptr<TCPMessageAssembler> m_assembler;
+    std::unique_ptr<Assembler> m_assembler;
 
     /* ----------------
      * Private methdos
