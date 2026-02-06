@@ -17,25 +17,9 @@ void handleRequest(pulse::net::Client &client, char request[])
     std::cout << request << std::endl;
 }
 
-const std::string YELLOW = "\033[33m"; // Yellow text
-const std::string RESET = "\033[0m";   // Reset to default color
-
 int main()
 {
     Logger &logger = Logger::getInstance();
-
-    try
-    {
-        std::locale loc("");
-        std::locale::global(loc);
-    }
-    catch (...)
-    {
-        std::locale::global(std::locale("C"));
-    }
-
-    std::cout.imbue(std::locale());
-    std::cerr.imbue(std::locale());
 
     /********** Read config file ***********/
     ConfigParser parser;
