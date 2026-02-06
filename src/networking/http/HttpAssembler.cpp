@@ -1,4 +1,4 @@
-#include "HttpMessageAssembler.h"
+#include "HttpAssembler.h"
 
 #include "../LoggerManager.h"
 #include "../Utils.h"
@@ -8,13 +8,12 @@
 namespace pulse::net
 {
 
-HttpMessageAssembler::HttpMessageAssembler(bool assemble_chunked_requests)
-    : m_assemble_chunked_requests(assemble_chunked_requests)
+HttpAssembler::HttpAssembler(bool assemble_chunked_requests) : m_assemble_chunked_requests(assemble_chunked_requests)
 {
 }
 
-HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, char *buffer, int &buffer_len,
-                                                                  int max_buffer_len, int last_tcp_packet_len)
+HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
+                                                    int last_tcp_packet_len)
 {
 
     std::lock_guard lock(m_mtx);
@@ -26,7 +25,7 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
     std::string error_message = "Error: malformed request syntax";
     std::string error_details;
 
-    HttpMessageAssembler::AssemblingResult result;
+    HttpAssembler::AssemblingResult result;
 
     while (client_state.pos < buffer_len)
     {
@@ -408,32 +407,32 @@ HttpMessageAssembler::AssemblingResult HttpMessageAssembler::feed(uint64_t id, c
     return result;
 }
 
-void HttpMessageAssembler::setMaxRequestLineLength(int length)
+void HttpAssembler::setMaxRequestLineLength(int length)
 {
     m_max_request_line_lenght = length;
 }
 
-void HttpMessageAssembler::setMaxRequestHeaderBytes(int length)
+void HttpAssembler::setMaxRequestHeaderBytes(int length)
 {
     m_max_total_headers = length;
 }
 
-void HttpMessageAssembler::setMaxBodySize(int length)
+void HttpAssembler::setMaxBodySize(int length)
 {
     m_max_body_size = length;
 }
 
-void HttpMessageAssembler::enableLogs()
+void HttpAssembler::enableLogs()
 {
     m_logs_enabled = true;
 }
 
-void HttpMessageAssembler::disableLogs()
+void HttpAssembler::disableLogs()
 {
     m_logs_enabled = false;
 }
 
-void HttpMessageAssembler::resetState(HttpStreamState &state) const
+void HttpAssembler::resetState(HttpStreamState &state) const
 {
     state.transfer_mode = TransferMode::UNKNOWN;
     state.body_lenght = -1;
@@ -441,7 +440,7 @@ void HttpMessageAssembler::resetState(HttpStreamState &state) const
     state.headers.clear();
 }
 
-HttpMessageAssembler::HttpMethod HttpMessageAssembler::parse_method(std::string_view part) const
+HttpAssembler::HttpMethod HttpAssembler::parse_method(std::string_view part) const
 {
     switch (part.size())
     {
@@ -482,7 +481,7 @@ HttpMessageAssembler::HttpMethod HttpMessageAssembler::parse_method(std::string_
     return HttpMethod::INVALID;
 }
 
-bool HttpMessageAssembler::parse_number(const std::string &s, int &result) const
+bool HttpAssembler::parse_number(const std::string &s, int &result) const
 {
     bool is_quoted = s.size() > 2 && s.front() == '"' && s[s.size() - 1] == '"';
 
@@ -500,7 +499,7 @@ bool HttpMessageAssembler::parse_number(const std::string &s, int &result) const
     return ec == std::errc{};
 }
 
-void HttpMessageAssembler::log(std::string_view severity, std::string_view message)
+void HttpAssembler::log(std::string_view severity, std::string_view message)
 {
     if (m_logs_enabled)
         LoggerManager::get_logger()->write(severity, message);

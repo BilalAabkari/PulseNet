@@ -11,10 +11,10 @@
 namespace pulse::net
 {
 
-class HttpMessageAssembler : public TCPMessageAssembler<HttpMessage>
+class HttpAssembler : public TCPMessageAssembler<HttpMessage>
 {
   public:
-    HttpMessageAssembler(bool assemble_chunked_requests = true);
+    HttpAssembler(bool assemble_chunked_requests = true);
 
     virtual AssemblingResult feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
                                   int last_tcp_packet_len);

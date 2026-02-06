@@ -109,7 +109,7 @@ template <ValidAssembler Assembler> class NetworkManager
     /**
      * @brief Starts the socket listener
      */
-    void startListening()
+    void start()
     {
         setupSocket();
 
