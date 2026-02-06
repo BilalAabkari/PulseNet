@@ -10,7 +10,7 @@ class LoggerInterface
   public:
     virtual ~LoggerInterface() = default;
 
-    virtual void write(std::string_view severity, std::string_view &message)
+    virtual void write(std::string_view severity, const std::string_view &message)
     {
         std::cout << "[" << severity << "] " << message << "\n";
     };

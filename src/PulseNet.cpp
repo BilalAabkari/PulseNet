@@ -1,7 +1,7 @@
 ﻿#include "PulseNet.h"
 #include "Commands.h"
 #include "networking/Client.h"
-#include "networking/NetworkManager.h"
+#include "networking/TCPServer.h"
 #include "networking/ThreadPool.h"
 #include "networking/http/HttpAssembler.h"
 #include "utils/ConfigParser.h"
@@ -12,9 +12,24 @@
 #include <locale>
 #include <thread>
 
-void handleRequest(pulse::net::Client &client, char request[])
+std::string handleRequest(const pulse::net::HttpMessage &message, uint64_t id, int port, const std::string &ip)
 {
-    std::cout << request << std::endl;
+    std::cout << "*********************************************************"
+                 "********\n";
+    std::cout << "CLIENT ID: " << std::to_string(id) << "\nIP ADDRESS: " << ip << "\nPORT: " << std::to_string(port)
+              << "\n\n";
+    std::cout << message.serialize();
+
+    std::ostringstream response_body;
+    response_body << "{\n"
+                  << "\"message\" : \"Message received!\"\n"
+                  << "}";
+
+    pulse::net::HttpMessage response(pulse::net::HttpVersion::HTTP_1_1, pulse::net::HttpStatus::OK,
+                                     response_body.str());
+    response.addHeader("Content-Type", "application/json");
+
+    return response.serialize();
 }
 
 int main()
@@ -29,7 +44,7 @@ int main()
     std::unique_ptr<pulse::net::HttpAssembler> assembler = std::make_unique<pulse::net::HttpAssembler>();
     assembler->enableLogs();
 
-    pulse::net::NetworkManager<pulse::net::HttpAssembler> server(80, "127.0.0.1", 2, std::move(assembler));
+    pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "127.0.0.1", 2, std::move(assembler));
 
     try
     {
@@ -50,25 +65,13 @@ int main()
 
     pulse::net::ThreadPool test(1, [&server]() {
         auto request = server.next();
+
         pulse::net::HttpMessage message = request->message;
 
-        std::cout << "*********************************************************"
-                     "********\n";
-        std::cout << "CLIENT ID: " << std::to_string(request->client.id)
-                  << "\nIP ADDRESS: " << request->client.ip_address
-                  << "\nPORT: " << std::to_string(request->client.port) << "\n\n";
-        std::cout << message.serialize();
+        std::string response =
+            handleRequest(message, request->client.id, request->client.port, request->client.ip_address);
 
-        std::ostringstream response_body;
-        response_body << "{\n"
-                      << "\"message\" : \"Message received!\"\n"
-                      << "}";
-
-        pulse::net::HttpMessage response(pulse::net::HttpVersion::HTTP_1_1, pulse::net::HttpStatus::OK,
-                                         response_body.str());
-        response.addHeader("Content-Type", "application/json");
-
-        server.send(request->client.id, response.serialize());
+        server.send(request->client.id, response);
     });
 
     test.run();

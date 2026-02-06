@@ -9,10 +9,11 @@
 #include <string>
 #include <thread>
 
-#include "../utils/Logger.h"
 #include "Client.h"
 #include "DefaultMessageAssembler.h"
+#include "LoggerManager.h"
 #include "NetworkPlatform.h"
+#include "Server.h"
 #include "TCPMessageAssembler.h"
 #include "ThreadPool.h"
 #include "ThreadSafeQueue.h"
@@ -34,7 +35,7 @@ namespace pulse::net
 {
 
 /**
- * @class NetworkManager
+ * @class TCPServer
  * @brief A class that manages networking and socket listeners.
  *
  * This class manages the setup, control of network sockets and listeners.
@@ -46,7 +47,7 @@ concept ValidAssembler = requires {
 } && std::derived_from<T, TCPMessageAssembler<typename T::MessageType>> && std::movable<typename T::MessageType>;
 ;
 
-template <ValidAssembler Assembler> class NetworkManager
+template <ValidAssembler Assembler> class TCPServer : public Server
 {
 
   public:
@@ -62,8 +63,8 @@ template <ValidAssembler Assembler> class NetworkManager
      * Constructors
      * ----------------
      */
-    NetworkManager(int port, std::string ip_address = ANY_IP, int assembler_workers = 2,
-                   std::unique_ptr<Assembler> assembler = nullptr)
+    TCPServer(int port, std::string ip_address = ANY_IP, int assembler_workers = 2,
+              std::unique_ptr<Assembler> assembler = nullptr)
         : m_listening(false), m_assembler_thread_pool(assembler_workers, [this]() { this->assemblerWorker(); }),
           m_ip_address(ip_address), m_port(port)
     {
@@ -89,10 +90,10 @@ template <ValidAssembler Assembler> class NetworkManager
         }
     }
 
-    NetworkManager(const NetworkManager &nm) = delete;
-    NetworkManager(const NetworkManager &&nm) = delete;
-    NetworkManager &operator=(const NetworkManager &nm) = delete;
-    NetworkManager &operator=(NetworkManager &&nm) = delete;
+    TCPServer(const TCPServer &nm) = delete;
+    TCPServer(const TCPServer &&nm) = delete;
+    TCPServer &operator=(const TCPServer &nm) = delete;
+    TCPServer &operator=(TCPServer &&nm) = delete;
 
     /* ----------------
      * Public methods
@@ -117,8 +118,6 @@ template <ValidAssembler Assembler> class NetworkManager
         {
             return;
         }
-
-        Logger &logger = Logger::getInstance();
 
         GUID guid = WSAID_ACCEPTEX;
         DWORD bytes;
@@ -171,8 +170,6 @@ template <ValidAssembler Assembler> class NetworkManager
             ULONG_PTR completionKey;
             OVERLAPPED *overlapped;
 
-            Logger &logger = Logger::getInstance();
-
             while (m_listening)
             {
                 BOOL ok = GetQueuedCompletionStatus(iocp, &bytes, &completionKey, &overlapped, INFINITE);
@@ -215,8 +212,6 @@ template <ValidAssembler Assembler> class NetworkManager
                     {
                         m_pending_accepts.fetch_add(1);
                     }
-
-                    // And push an event to read from the just connected client
                 }
                 else // Already existent connection
                 {
@@ -283,7 +278,6 @@ template <ValidAssembler Assembler> class NetworkManager
 
     void send(uint64_t id, const std::string &message)
     {
-        Logger &logger = Logger::getInstance();
 
         Client *client = getClient(id);
 
@@ -311,8 +305,8 @@ template <ValidAssembler Assembler> class NetworkManager
         }
         else
         {
-            logger.log(LogType::NETWORK, LogSeverity::LOG_WARNING,
-                       "Tried to send a message to client " + std::to_string(id) + " but it's not connected");
+            LoggerManager::get_logger()->write("[WARN]", "Tried to send a message to client " + std::to_string(id) +
+                                                             " but it's not connected");
         }
     }
 
@@ -670,22 +664,19 @@ template <ValidAssembler Assembler> class NetworkManager
 
     bool postAcceptExEvent(AcceptContext &accept_context)
     {
-        Logger &logger = Logger::getInstance();
 
         if (m_server_socket == NULL)
         {
-            logger.log(LogType::NETWORK, LogSeverity::LOG_ERROR,
-                       "Tried to post an accept event to IOCP, but the server socket "
-                       "is not set");
+            LoggerManager::get_logger()->write("[WARN]", "Tried to post an accept event to IOCP, but the server socket "
+                                                         "is not set");
             return false;
         }
 
         if (m_accept_ctx == nullptr)
         {
-            logger.log(LogType::NETWORK, LogSeverity::LOG_ERROR,
-                       "Tried to post an accept event to IOCP, but the accept "
-                       "context object "
-                       "is not created");
+            LoggerManager::get_logger()->write("[WARN]", "Tried to post an accept event to IOCP, but the accept "
+                                                         "context object "
+                                                         "is not created");
             return false;
         }
 
@@ -703,7 +694,7 @@ template <ValidAssembler Assembler> class NetworkManager
         if (!acceptEx_result && WSAGetLastError() != WSA_IO_PENDING)
         {
             int error_code = WSAGetLastError();
-            logger.log(LogType::NETWORK, LogSeverity::LOG_ERROR, "AcceptEx failed with error code: " + error_code);
+            LoggerManager::get_logger()->write("[WARN]", "AcceptEx failed with error code: " + error_code);
 
             closesocket(accept_context.client_socket);
             accept_context.client_socket = INVALID_SOCKET;
@@ -774,7 +765,6 @@ template <ValidAssembler Assembler> class NetworkManager
      */
     void postReceiveEvent(Client &client)
     {
-        Logger &logger = Logger::getInstance();
 
         bool error = false;
 
@@ -794,7 +784,7 @@ template <ValidAssembler Assembler> class NetworkManager
         if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
         {
             int error_code = WSAGetLastError();
-            logger.log(LogType::NETWORK, LogSeverity::LOG_ERROR, "WSARecv failed with error code: " + error_code);
+            LoggerManager::get_logger()->write("[WARN]", "WSARecv failed with error code: " + error_code);
             error = true;
         }
         else if (result == 0) // Completed immediately
@@ -815,11 +805,10 @@ template <ValidAssembler Assembler> class NetworkManager
 
     void postSendEvent(Client &client, std::string message)
     {
-        Logger &logger = Logger::getInstance();
 
         if (message.size() > MAX_BUFFER_LENGHT_FOR_REQUESTS)
         {
-            logger.log(LogType::NETWORK, LogSeverity::LOG_ERROR, "Message is larger than max lenght.");
+            LoggerManager::get_logger()->write("[WARN]", "Message is larger than max lenght.");
             client.disconnect();
         }
         else
@@ -842,7 +831,7 @@ template <ValidAssembler Assembler> class NetworkManager
             if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
             {
                 int error_code = WSAGetLastError();
-                logger.log(LogType::NETWORK, LogSeverity::LOG_ERROR, "WSARecv failed with error code: " + error_code);
+                LoggerManager::get_logger()->write("[WARN]", "WSARecv failed with error code: " + error_code);
                 client.disconnect();
             }
             else if (result == 0)
@@ -853,8 +842,8 @@ template <ValidAssembler Assembler> class NetworkManager
                 if (!success)
                 {
                     int error_code = WSAGetLastError();
-                    logger.log(LogType::NETWORK, LogSeverity::LOG_ERROR,
-                               "PostQueuedCompletionStatus failed with error code: " + error_code);
+                    LoggerManager::get_logger()->write("[WARN]", "PostQueuedCompletionStatus failed with error code: " +
+                                                                     error_code);
 
                     client.disconnect();
                 }
