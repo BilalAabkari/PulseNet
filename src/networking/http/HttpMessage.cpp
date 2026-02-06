@@ -7,6 +7,7 @@ HttpMessage::HttpMessage(HttpVersion version, HttpStatus status, std::string bod
     : m_version(version), m_status(status), m_body(body)
 {
     addHeader("Content-Length", std::to_string(body.size()));
+    m_type = HttpType::RESPONSE;
 }
 
 HttpMessage::~HttpMessage()

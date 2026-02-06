@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include <functional>
 #include <iomanip>
 #include <iostream>
@@ -20,6 +24,7 @@
 #include "constants.h"
 
 // clang-format off
+
 #include <Wsrm.h>
 
 #include <winsock2.h>
@@ -45,7 +50,6 @@ template <typename T>
 concept ValidAssembler = requires {
     typename T::MessageType;
 } && std::derived_from<T, TCPMessageAssembler<typename T::MessageType>> && std::movable<typename T::MessageType>;
-;
 
 template <ValidAssembler Assembler> class TCPServer : public Server
 {

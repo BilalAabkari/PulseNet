@@ -7,11 +7,19 @@ namespace pulse::net
 
 enum class HttpStatus
 {
+    NONE = 0,
     OK = 200,
     BAD_REQUEST = 400,
     UNAUTHORIZED = 401,
     FORBIDDEN = 403,
     NOT_FOUND = 404
+};
+
+enum class HttpType
+{
+    UNINITALIZED,
+    REQUEST,
+    RESPONSE
 };
 
 enum class HttpVersion

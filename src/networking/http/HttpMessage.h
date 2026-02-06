@@ -26,8 +26,9 @@ class HttpMessage : public JSONSerializable
 
   private:
     std::unordered_map<std::string, std::string> m_headers;
-    HttpStatus m_status;
-    HttpVersion m_version;
+    HttpType m_type = HttpType::UNINITALIZED;
+    HttpStatus m_status = HttpStatus::NONE;
+    HttpVersion m_version = HttpVersion::UNKNOWN;
     std::string m_body;
 };
 
