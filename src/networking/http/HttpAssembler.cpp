@@ -58,7 +58,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                 }
                 else
                 {
-                    client_state.method = parse_method(part);
+                    client_state.method = parseMethod(part);
                     if (client_state.method == HttpMethod::INVALID)
                     {
                         client_state.state = HttpState::STATE_ERROR;
@@ -259,7 +259,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     if (it != client_state.headers.end())
                     {
                         int length = 0;
-                        if (parse_number(it->second, length) && length <= m_max_body_size)
+                        if (parseNumber(it->second, length) && length <= m_max_body_size)
                         {
                             client_state.state = HttpState::STATE_PARSE_BODY;
                             client_state.body_lenght = length;
@@ -361,8 +361,23 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             else if (size == client_state.body_lenght)
             {
-                client_state.state = HttpState::STATE_DONE;
                 std::string body(buffer + client_state.i_start, client_state.body_lenght);
+
+                result.messages.emplace_back(client_state.http_version, client_state.method,
+                                             std::move(client_state.uri), std::move(client_state.headers),
+                                             std::move(body));
+
+                if (client_state.pos == buffer_len - 1)
+                {
+                    buffer_len = 0;
+                }
+                else
+                {
+                    std::memmove(buffer, buffer + client_state.pos, buffer_len - client_state.pos);
+                }
+
+                resetState(client_state);
+                continue;
             }
             break;
         }
@@ -375,10 +390,6 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
         }
 
         if (client_state.state == HttpState::STATE_ERROR)
-        {
-            break;
-        }
-        else if (client_state.state == HttpState::STATE_DONE)
         {
             break;
         }
@@ -437,10 +448,28 @@ void HttpAssembler::resetState(HttpStreamState &state) const
     state.transfer_mode = TransferMode::UNKNOWN;
     state.body_lenght = -1;
     state.http_version = HttpVersion::UNKNOWN;
-    state.headers.clear();
+
+    state.headers = std::unordered_map<std::string, std::string>();
+    state.state = HttpState::STATE_PARSE_RESPONSE_OR_REQUEST;
+
+    state.method = HttpMethod::UNKNOWN;
+    state.type = HttpType::UNKNOWN;
+    state.http_code = -1;
+
+    state.uri = "";
+    state.i_start = 0;
+    state.i_end = 0;
+    state.header_name_start = 0;
+    state.header_name_end = 0;
+    state.header_value_start = 0;
+    state.header_value_end = 0;
+    state.length_counter = 0;
+    state.total_headers_counter = 0;
+
+    state.pos = 0;
 }
 
-HttpAssembler::HttpMethod HttpAssembler::parse_method(std::string_view part) const
+HttpMethod HttpAssembler::parseMethod(std::string_view part) const
 {
     switch (part.size())
     {
@@ -481,7 +510,7 @@ HttpAssembler::HttpMethod HttpAssembler::parse_method(std::string_view part) con
     return HttpMethod::INVALID;
 }
 
-bool HttpAssembler::parse_number(const std::string &s, int &result) const
+bool HttpAssembler::parseNumber(const std::string &s, int &result) const
 {
     bool is_quoted = s.size() > 2 && s.front() == '"' && s[s.size() - 1] == '"';
 

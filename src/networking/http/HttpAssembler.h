@@ -50,28 +50,6 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
         STATE_ERROR
     };
 
-    enum class HttpType
-    {
-        REQUEST,
-        RESPONSE,
-        UNKNOWN
-    };
-
-    enum class HttpMethod
-    {
-        GET,
-        POST,
-        PUT,
-        HTTP_DELETE,
-        PATCH,
-        TRACE,
-        HEAD,
-        OPTIONS,
-        CONNECT,
-        INVALID,
-        UNKNOWN
-    };
-
     struct HttpStreamState
     {
         int pos = 0;
@@ -100,8 +78,8 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
     bool m_assemble_chunked_requests;
 
     void resetState(HttpStreamState &state) const;
-    HttpMethod parse_method(std::string_view part) const;
-    bool parse_number(const std::string &s, int &result) const;
+    HttpMethod parseMethod(std::string_view part) const;
+    bool parseNumber(const std::string &s, int &result) const;
     void log(std::string_view severity, std::string_view message);
 
     int m_max_request_line_lenght = 4096;

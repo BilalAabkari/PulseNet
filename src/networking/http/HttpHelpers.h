@@ -17,7 +17,7 @@ enum class HttpStatus
 
 enum class HttpType
 {
-    UNINITALIZED,
+    UNKNOWN,
     REQUEST,
     RESPONSE
 };
@@ -28,6 +28,21 @@ enum class HttpVersion
     HTTP_1_0,
     HTTP_1_1,
     HTTP2
+};
+
+enum class HttpMethod
+{
+    GET,
+    POST,
+    PUT,
+    HTTP_DELETE,
+    PATCH,
+    TRACE,
+    HEAD,
+    OPTIONS,
+    CONNECT,
+    INVALID,
+    UNKNOWN
 };
 
 struct HttpHeader
