@@ -373,7 +373,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                 }
                 else
                 {
-                    std::memmove(buffer, buffer + client_state.pos, buffer_len - client_state.pos);
+                    std::memmove(buffer, buffer + client_state.pos + 1, buffer_len - client_state.pos);
+                    buffer_len = buffer_len - client_state.pos - 1;
                 }
 
                 resetState(client_state);
@@ -410,6 +411,9 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
         size_t size = json_body.size();
 
         HttpMessage response(client_state.http_version, HttpStatus::BAD_REQUEST, std::move(json_body));
+
+        resetState(client_state);
+        buffer_len = 0;
 
         response.addHeader("Content-Lenght", std::to_string(size));
         result.error_message = response.serialize();
