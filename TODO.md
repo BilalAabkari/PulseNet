@@ -53,6 +53,16 @@ This document tracks planned improvements and known issues for the project.
   - Ensure server stability when IOCP operations fail
   - Document error recovery strategies
 
+## Performance
+- [ ] **Improve logging system for zero overhead**
+  - Implement compile-time log level filtering
+  - Add conditional compilation macros for debug/release builds
+  - Consider structured logging with minimal runtime cost
+  - Implement async logging (background thread) to avoid blocking I/O operations
+  - Add log level configuration (disable in production if needed)
+  - Benchmark logging overhead and ensure negligible performance impact
+  - Consider using ring buffers for lock-free logging
+
 ## Future Enhancements
 - [ ] Add metrics/statistics collection for buffer usage patterns
 - [ ] Consider implementing buffer pooling for better memory management
@@ -61,14 +71,3 @@ This document tracks planned improvements and known issues for the project.
 
 ---
 
-## Contributing
-When working on items from this TODO list:
-1. Create an issue referencing the TODO item
-2. Create a feature branch
-3. Include tests for new functionality
-4. Update documentation as needed
-5. Reference the TODO item in your pull request
-
-## Notes
-- Priority may shift based on user feedback and production issues
-- Mark items as complete with `[x]` when merged to main branch
