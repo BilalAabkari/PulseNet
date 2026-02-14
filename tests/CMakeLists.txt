@@ -15,6 +15,7 @@ enable_testing()
 
 set(TEST_SOURCES
     networking/HttpAssemblerTests.cpp
+    networking/UtilsTests.cpp
 )
 
 add_executable(PulseNetTests ${TEST_SOURCES})

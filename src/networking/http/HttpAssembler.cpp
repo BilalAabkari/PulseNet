@@ -249,9 +249,10 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             else if (c == '\n' && buffer[i - 1] == '\r' && client_state.i_end - client_state.i_start == 1)
             {
 
-                auto it = client_state.headers.find("transfer-mode");
-                if (it != client_state.headers.end())
+                auto it = client_state.headers.find("transfer-encoding");
+                if (it != client_state.headers.end() && Utils::containsToken(it->second, "chunked"))
                 {
+                    int a = 0;
                 }
                 else
                 {
