@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <charconv>
 #include <string>
 
 namespace pulse::net
@@ -28,14 +29,37 @@ class Utils
         bool found = false;
         while (!found && i < value.size())
         {
+            bool quoted = false;
 
             while (i < value.size() && (value[i] == ' ' || value[i] == '\t'))
                 i++;
 
             i_start = i;
 
-            while (i < value.size() && value[i] != ',')
-                i++;
+            if (value[i] == '"')
+            {
+                quoted = true;
+                while (i < value.size() - 1)
+                {
+                    if (value[i] != '\\' && value[i + 1] == '"')
+                        break;
+                    i++;
+                }
+
+                if (i >= value.size())
+                {
+                    // Not found the next quote, which means maformed value
+                    break;
+                }
+
+                i++; // Skip the quote
+                i_start++;
+            }
+            else
+            {
+                while (i < value.size() && value[i] != ',')
+                    i++;
+            }
 
             int i_end = i;
 
@@ -60,9 +84,35 @@ class Utils
             }
 
             i++;
+
+            if (quoted)
+            {
+                while (i < value.size() && (value[i] == ' ' || value[i] == '\t'))
+                    i++;
+
+                if (i < value.size() && value[i] == ',')
+                {
+                    i++;
+                }
+                else
+                {
+                    break; // Malformed
+                }
+            }
         }
 
         return found;
+    }
+
+    static bool parseHexadecimal(const std::string_view &s, int &result)
+    {
+
+        const char *first = s.data();
+        const char *last = first + s.size();
+
+        auto [ptr, ec] = std::from_chars(first, last, result, 16);
+
+        return ec == std::errc{};
     }
 };
 

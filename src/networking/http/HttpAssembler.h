@@ -14,7 +14,7 @@ namespace pulse::net
 class HttpAssembler : public TCPMessageAssembler<HttpMessage>
 {
   public:
-    HttpAssembler(bool assemble_chunked_requests = true);
+    HttpAssembler(bool assemble_chunked_requests = false);
 
     virtual AssemblingResult feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
                                   int last_tcp_packet_len);
@@ -22,9 +22,6 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
     void setMaxRequestLineLength(int length);
     void setMaxRequestHeaderBytes(int length);
     void setMaxBodySize(int length);
-
-    void enableLogs();
-    void disableLogs();
 
   private:
     enum class TransferMode
@@ -46,6 +43,9 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
         STATE_PARSE_HEADER_VALUE,
         STATE_PARSE_BODY,
         STATE_PARSE_CHUNK_SIZE,
+        STATE_PARSE_CHUNK_SKIP_LINE,
+        STATE_PARSE_CHUNK,
+        STATE_PARSE_END_OF_CHUNKED_REQUEST,
         STATE_DONE,
         STATE_ERROR
     };
@@ -55,6 +55,7 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
         int pos = 0;
         TransferMode transfer_mode = TransferMode::UNKNOWN;
         int body_lenght = -1;
+        int current_chunk_length = 0;
         HttpVersion http_version = HttpVersion::UNKNOWN;
 
         std::unordered_map<std::string, std::string> headers;
@@ -75,12 +76,11 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
 
     std::unordered_map<uint64_t, HttpStreamState> m_client_states;
     std::mutex m_mtx;
-    bool m_assemble_chunked_requests;
+    bool m_assemble_chunked_requests = false;
 
     void resetState(HttpStreamState &state) const;
     HttpMethod parseMethod(std::string_view part) const;
     bool parseNumber(const std::string &s, int &result) const;
-    void log(std::string_view severity, std::string_view message);
 
     int m_max_request_line_lenght = 4096;
     int m_max_total_headers = 8192;

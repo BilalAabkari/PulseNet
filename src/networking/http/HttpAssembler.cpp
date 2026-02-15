@@ -62,8 +62,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     if (client_state.method == HttpMethod::INVALID)
                     {
                         client_state.state = HttpState::STATE_ERROR;
-                        log("WARN", "Rejected http request of connection " + std::to_string(id) +
-                                        ": Invalid first line. Expected HTTP version or a method.");
+                        log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) +
+                                                ": Invalid first line. Expected HTTP version or a method.");
                     }
                     else
                     {
@@ -76,7 +76,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             else if (client_state.length_counter > 8)
             {
-                log("WARN",
+                log(SEVERITY::INFO,
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
@@ -109,7 +109,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             else if (client_state.length_counter > m_max_request_line_lenght)
             {
-                log("WARN",
+                log(SEVERITY::INFO,
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
@@ -133,7 +133,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             else if (client_state.length_counter > m_max_request_line_lenght)
             {
-                log("WARN",
+                log(SEVERITY::INFO,
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
@@ -160,7 +160,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             else if (client_state.length_counter > m_max_request_line_lenght)
             {
-                log("WARN",
+                log(SEVERITY::INFO,
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
@@ -200,7 +200,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             else if (client_state.length_counter > m_max_request_line_lenght)
             {
-                log("WARN",
+                log(SEVERITY::INFO,
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
@@ -252,7 +252,9 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                 auto it = client_state.headers.find("transfer-encoding");
                 if (it != client_state.headers.end() && Utils::containsToken(it->second, "chunked"))
                 {
-                    int a = 0;
+                    client_state.state = HttpState::STATE_PARSE_CHUNK_SIZE;
+                    client_state.i_start = i + 1;
+                    client_state.i_end = i + 1;
                 }
                 else
                 {
@@ -269,30 +271,45 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                         }
                         else if (length > m_max_body_size)
                         {
-                            log("WARN", "Rejected http request of connection " + std::to_string(id) +
-                                            ": Invalid headers. Maximum number "
-                                            "of bytes for "
-                                            "headers exceded");
+                            log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) +
+                                                    ": Invalid headers. Maximum number "
+                                                    "of bytes for "
+                                                    "headers exceded");
                             client_state.state = HttpState::STATE_ERROR;
                         }
                         else
                         {
-                            log("WARN", "Rejected http request of connection " + std::to_string(id) +
-                                            ": Could not parse content length octets");
+                            log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) +
+                                                    ": Could not parse content length octets");
                             client_state.state = HttpState::STATE_ERROR;
                         }
                     }
-                    else
+                    else // NO BODY
                     {
-                        client_state.state = HttpState::STATE_DONE;
+
+                        result.messages.emplace_back(client_state.http_version, client_state.method, client_state.uri,
+                                                     std::move(client_state.headers));
+
+                        if (client_state.pos == buffer_len - 1)
+                        {
+                            buffer_len = 0;
+                        }
+                        else
+                        {
+                            std::memmove(buffer, buffer + client_state.pos + 1, buffer_len - client_state.pos);
+                            buffer_len = buffer_len - client_state.pos - 1;
+                        }
+
+                        resetState(client_state);
+                        continue;
                     }
                 }
             }
             else if (client_state.total_headers_counter > m_max_total_headers)
             {
-                log("WARN", "Rejected http request of connection " + std::to_string(id) +
-                                ": Invalid headers. Maximum number of bytes for "
-                                "headers exceded");
+                log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) +
+                                        ": Invalid headers. Maximum number of bytes for "
+                                        "headers exceded");
                 client_state.state = HttpState::STATE_ERROR;
             }
             else if (static_cast<unsigned char>(c) <= 127)
@@ -336,9 +353,9 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             else if (client_state.total_headers_counter > m_max_total_headers)
             {
-                log("WARN", "Rejected http request of connection " + std::to_string(id) +
-                                ": Invalid headers. Maximum number of bytes for "
-                                "headers exceded");
+                log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) +
+                                        ": Invalid headers. Maximum number of bytes for "
+                                        "headers exceded");
                 client_state.state = HttpState::STATE_ERROR;
             }
             else if (static_cast<unsigned char>(c) <= 127)
@@ -355,15 +372,16 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             int size = client_state.i_end - client_state.i_start;
             if (size > m_max_body_size)
             {
-                log("WARN", "Rejected http request of connection " + std::to_string(id) +
-                                ": Invalid headers. Maximum number of bytes for "
-                                "body exceded");
+                log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) +
+                                        ": Invalid headers. Maximum number of bytes for "
+                                        "body exceded");
                 client_state.state = HttpState::STATE_ERROR;
             }
             else if (size == client_state.body_lenght)
             {
                 std::string body(buffer + client_state.i_start, client_state.body_lenght);
-
+                // TODO: INVESTIGATE HOW TO DEAL WITH HEADERS AND URI IN CHUNKED
+                //       REQUESTS WITHOUT A PERFORMANCE HIT.
                 result.messages.emplace_back(client_state.http_version, client_state.method,
                                              std::move(client_state.uri), std::move(client_state.headers),
                                              std::move(body));
@@ -383,6 +401,147 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             break;
         }
+        case HttpState::STATE_PARSE_CHUNK_SIZE: {
+            int size = client_state.i_end - client_state.i_start;
+            if (size > 0 && c == '\n' && buffer[i - 1] == '\r')
+            {
+                int length = 0;
+
+                if (Utils::parseHexadecimal(std::string_view(buffer + client_state.i_start, size - 1), length))
+                {
+                    if (length > 0)
+                    {
+                        client_state.current_chunk_length = length;
+                        client_state.state = HttpState::STATE_PARSE_CHUNK;
+                        client_state.i_start = i + 1;
+                        client_state.i_end = i + 1;
+                        client_state.body_lenght += length;
+                    }
+                    else
+                    {
+                        client_state.current_chunk_length = 0;
+                        client_state.state = HttpState::STATE_PARSE_END_OF_CHUNKED_REQUEST;
+                        client_state.i_start = i + 1;
+                        client_state.i_end = i + 1;
+                    }
+                }
+                else
+                {
+                    log(SEVERITY::INFO,
+                        "Rejected http request of connection " + std::to_string(id) + ": Could not parse chunk size");
+                    client_state.state = HttpState::STATE_ERROR;
+                }
+            }
+            else if ((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') || (c >= '0' && c <= '9') || c == '\r')
+            {
+                client_state.i_end++;
+            }
+            else
+            {
+                client_state.state = HttpState::STATE_ERROR;
+                log(SEVERITY::INFO,
+                    "Rejected http request of connection " + std::to_string(id) + ": Could not parse chunk size");
+            }
+
+            break;
+        }
+        case HttpState::STATE_PARSE_CHUNK: {
+            client_state.i_end++;
+            int size = client_state.i_end - client_state.i_start;
+            if (size == client_state.current_chunk_length)
+            {
+                if (m_assemble_chunked_requests)
+                {
+                }
+                else
+                {
+
+                    std::string body(buffer + client_state.i_start, client_state.current_chunk_length);
+
+                    result.messages.emplace_back(client_state.http_version, client_state.method, client_state.uri,
+                                                 std::move(client_state.headers), std::move(body));
+
+                    if (client_state.pos == buffer_len - 1)
+                    {
+                        buffer_len = 0;
+                    }
+                    else
+                    {
+                        std::memmove(buffer, buffer + client_state.pos + 1, buffer_len - client_state.pos);
+                        buffer_len = buffer_len - client_state.pos - 1;
+                    }
+
+                    client_state.pos = 0;
+                    client_state.i_start = 0;
+                    client_state.i_end = 0;
+                    client_state.current_chunk_length = 0;
+                    client_state.state = HttpState::STATE_PARSE_CHUNK_SKIP_LINE;
+                    continue;
+                }
+            }
+            else if (size > m_max_body_size)
+            {
+                client_state.state = HttpState::STATE_ERROR;
+                log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) + ": Too large ");
+            }
+
+            break;
+        }
+        case HttpState::STATE_PARSE_CHUNK_SKIP_LINE: {
+            int size = client_state.i_end + 1 - client_state.i_start;
+            if (size == 2 && c == '\n' && buffer[i - 1] == '\r')
+            {
+                client_state.i_start = i + 1;
+                client_state.i_end = i + 1;
+                client_state.state = HttpState::STATE_PARSE_CHUNK_SIZE;
+                client_state.current_chunk_length = 0;
+            }
+            else if (size < 2 && (c == '\n' || c == '\r'))
+            {
+                client_state.i_end++;
+            }
+            else
+            {
+                client_state.state = HttpState::STATE_ERROR;
+                log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) +
+                                        ": Could not parse cr-lf end of chunk");
+            }
+            break;
+        }
+        case HttpState::STATE_PARSE_END_OF_CHUNKED_REQUEST: {
+            int size = client_state.i_end + 1 - client_state.i_start;
+            if (size == 2 && c == '\n' && buffer[i - 1] == '\r')
+            {
+
+                result.messages.emplace_back(client_state.http_version, client_state.method,
+                                             std::move(client_state.uri), std::move(client_state.headers), "");
+
+                if (client_state.pos == buffer_len - 1)
+                {
+                    buffer_len = 0;
+                }
+                else
+                {
+                    std::memmove(buffer, buffer + client_state.pos + 1, buffer_len - client_state.pos);
+                    buffer_len = buffer_len - client_state.pos - 1;
+                }
+
+                resetState(client_state);
+                continue;
+            }
+            else if (size < 2 && (c == '\n' || c == '\r'))
+            {
+                client_state.i_end++;
+            }
+            else
+            {
+                client_state.state = HttpState::STATE_ERROR;
+                log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) +
+                                        ": Could not parse cr-lf end of chunk");
+            }
+            break;
+        }
+        break;
         case HttpState::STATE_DONE:
             break;
         case HttpState::STATE_ERROR:
@@ -438,16 +597,6 @@ void HttpAssembler::setMaxBodySize(int length)
     m_max_body_size = length;
 }
 
-void HttpAssembler::enableLogs()
-{
-    m_logs_enabled = true;
-}
-
-void HttpAssembler::disableLogs()
-{
-    m_logs_enabled = false;
-}
-
 void HttpAssembler::resetState(HttpStreamState &state) const
 {
     state.transfer_mode = TransferMode::UNKNOWN;
@@ -470,6 +619,7 @@ void HttpAssembler::resetState(HttpStreamState &state) const
     state.header_value_end = 0;
     state.length_counter = 0;
     state.total_headers_counter = 0;
+    state.current_chunk_length = 0;
 
     state.pos = 0;
 }
@@ -531,12 +681,6 @@ bool HttpAssembler::parseNumber(const std::string &s, int &result) const
     auto [ptr, ec] = std::from_chars(first, last, result);
 
     return ec == std::errc{};
-}
-
-void HttpAssembler::log(std::string_view severity, std::string_view message)
-{
-    if (m_logs_enabled)
-        LoggerManager::get_logger()->write(severity, message);
 }
 
 } // namespace pulse::net

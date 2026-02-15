@@ -32,6 +32,30 @@ TEST(HttpParserTest, SuccessCompleteMessage)
     }
 }
 
+TEST(HttpParserTest, SuccessCompleteMessageNoBody)
+{
+    pulse::net::HttpAssembler assembler;
+
+    for (int i = 0; i < 3; i++)
+    {
+        char buffer[] = "GET /aaa HTTP/1.1\r\n"
+                        "content-type: application/json\r\n"
+                        "user-agent: PostmanRuntime/7.51.1\r\n"
+                        "connection:keep-alive\r\n"
+                        "accept-encoding : gzip, deflate, br\r\n"
+                        "accept : */*\r\n"
+                        "host: 127.0.0.1\r\n\r\n";
+
+        int length = sizeof(buffer) - 1;
+
+        pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, buffer, length, 8096, length);
+
+        EXPECT_FALSE(result.error);
+        EXPECT_EQ(length, 0); // Everything consumed
+        EXPECT_EQ(result.messages.size(), 1);
+    }
+}
+
 TEST(HttpParserTest, SuccessAfterError)
 {
     pulse::net::HttpAssembler assembler;
@@ -132,6 +156,115 @@ TEST(HttpParserTest, SuccessStreamedMessage)
             EXPECT_EQ(current_length, 0);
         }
     }
+}
+
+TEST(HttpParserTest, SuccessCompleteChunkedMessage)
+{
+    pulse::net::HttpAssembler assembler;
+
+    for (int i = 0; i < 3; i++)
+    {
+        char chunked_request[] = "POST /upload HTTP/1.1\r\n"
+                                 "Host: example.com\r\n"
+                                 "Transfer-Encoding: chunked\r\n"
+                                 "Content-Type: text/plain\r\n"
+                                 "Connection: keep-alive\r\n"
+                                 "\r\n"
+                                 "7\r\n"
+                                 "Mozilla\r\n"
+                                 "9\r\n"
+                                 "Developer\r\n"
+                                 "1a\r\n"
+                                 "Network and Communications\r\n"
+                                 "0\r\n"
+                                 "\r\n";
+
+        int length = sizeof(chunked_request) - 1;
+
+        pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, chunked_request, length, 8096, length);
+
+        EXPECT_FALSE(result.error);
+        EXPECT_EQ(length, 0);                 // Everything consumed
+        EXPECT_EQ(result.messages.size(), 4); // 4 messages -> 3 chunks + empty chunk signaling end of chunked request
+    }
+}
+
+TEST(HttpParserTest, SuccessFiniteMessageAfterChunkedMessage)
+{
+    pulse::net::HttpAssembler assembler;
+
+    char request[] = "POST /aaa HTTP/1.1\r\n"
+                     "content-length: 26\r\n"
+                     "content-type: application/json\r\n"
+                     "user-agent: PostmanRuntime/7.51.1\r\n"
+                     "connection:keep-alive\r\n"
+                     "accept-encoding : gzip, deflate, br\r\n"
+                     "accept : */*\r\n"
+                     "host: 127.0.0.1\r\n\r\n"
+                     "{\r\n    \"text\" : \"hello\"\r\n}"
+                     "POST /upload HTTP/1.1\r\n"
+                     "Host: example.com\r\n"
+                     "Transfer-Encoding: chunked\r\n"
+                     "Content-Type: text/plain\r\n"
+                     "Connection: keep-alive\r\n"
+                     "\r\n"
+                     "7\r\n"
+                     "Mozilla\r\n"
+                     "9\r\n"
+                     "Developer\r\n"
+                     "1a\r\n"
+                     "Network and Communications\r\n"
+                     "0\r\n"
+                     "\r\n";
+
+    int length = sizeof(request) - 1;
+
+    pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, request, length, 8096, length);
+
+    EXPECT_FALSE(result.error);
+    EXPECT_EQ(length, 0); // Everything consumed
+    EXPECT_EQ(result.messages.size(),
+              5); // 5 messages -> 3 chunks + empty chunk signaling end of
+                  // chunked request + the finite message
+}
+
+TEST(HttpParserTest, SuccessChunkedMessageAfterFiniteMessage)
+{
+    pulse::net::HttpAssembler assembler;
+
+    char request[] = "POST /upload HTTP/1.1\r\n"
+                     "Host: example.com\r\n"
+                     "Transfer-Encoding: chunked\r\n"
+                     "Content-Type: text/plain\r\n"
+                     "Connection: keep-alive\r\n"
+                     "\r\n"
+                     "7\r\n"
+                     "Mozilla\r\n"
+                     "9\r\n"
+                     "Developer\r\n"
+                     "1a\r\n"
+                     "Network and Communications\r\n"
+                     "0\r\n"
+                     "\r\n"
+                     "POST /aaa HTTP/1.1\r\n"
+                     "content-length: 26\r\n"
+                     "content-type: application/json\r\n"
+                     "user-agent: PostmanRuntime/7.51.1\r\n"
+                     "connection:keep-alive\r\n"
+                     "accept-encoding : gzip, deflate, br\r\n"
+                     "accept : */*\r\n"
+                     "host: 127.0.0.1\r\n\r\n"
+                     "{\r\n    \"text\" : \"hello\"\r\n}";
+
+    int length = sizeof(request) - 1;
+
+    pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, request, length, 8096, length);
+
+    EXPECT_FALSE(result.error);
+    EXPECT_EQ(length, 0); // Everything consumed
+    EXPECT_EQ(result.messages.size(),
+              5); // 5 messages -> 3 chunks + empty chunk signaling end of
+                  // chunked request + the finite message
 }
 
 //*************************************************************************************
@@ -244,4 +377,32 @@ TEST(HttpParserTest, BodyTooLong)
 
     result = assembler.feed(2, buffer, length, 8096, length);
     EXPECT_TRUE(result.error);
+}
+
+TEST(HttpParserTest, ChunkedMessageMalformedChunkSize)
+{
+    pulse::net::HttpAssembler assembler;
+
+    char request[] = "POST /upload HTTP/1.1\r\n"
+                     "Host: example.com\r\n"
+                     "Transfer-Encoding: chunked\r\n"
+                     "Content-Type: text/plain\r\n"
+                     "Connection: keep-alive\r\n"
+                     "\r\n"
+                     " 7K\r\n"
+                     "Mozilla\r\n"
+                     "9\r\n"
+                     "Developer\r\n"
+                     "1a\r\n"
+                     "Network and Communications\r\n"
+                     "0\r\n"
+                     "\r\n";
+
+    int length = sizeof(request) - 1;
+
+    pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, request, length, 8096, length);
+
+    EXPECT_TRUE(result.error);
+    EXPECT_EQ(length, 0);
+    EXPECT_EQ(result.messages.size(), 0);
 }

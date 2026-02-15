@@ -11,11 +11,7 @@ class Server
     virtual void start() = 0;
     virtual void send(uint64_t id, const std::string &message) = 0;
 
-    virtual void enableLogs(bool enabled)
-    {
-        m_logs_enabled = enabled;
-    };
-
   private:
-    bool m_logs_enabled = false;
+    int m_min_client_buffer_len;
+    int m_max_client_buffer_len;
 };

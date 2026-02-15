@@ -13,8 +13,10 @@ class HttpMessage : public JSONSerializable
   public:
     HttpMessage() = default;
     HttpMessage(HttpVersion version, HttpStatus status, std::string body);
-    HttpMessage(HttpVersion version, HttpMethod method, std::string &&uri,
-                std::unordered_map<std::string, std::string> &&headers, std::string &&body);
+    HttpMessage(HttpVersion version, HttpMethod method, std::string uri,
+                std::unordered_map<std::string, std::string> headers, std::string body);
+    HttpMessage(HttpVersion version, HttpMethod method, std::string uri,
+                std::unordered_map<std::string, std::string> headers);
 
     virtual ~HttpMessage();
 

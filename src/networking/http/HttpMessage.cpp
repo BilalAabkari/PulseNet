@@ -10,10 +10,17 @@ HttpMessage::HttpMessage(HttpVersion version, HttpStatus status, std::string bod
     m_type = HttpType::RESPONSE;
 }
 
-HttpMessage::HttpMessage(HttpVersion version, HttpMethod method, std::string &&uri,
-                         std::unordered_map<std::string, std::string> &&headers, std::string &&body)
+HttpMessage::HttpMessage(HttpVersion version, HttpMethod method, std::string uri,
+                         std::unordered_map<std::string, std::string> headers, std::string body)
     : m_version(version), m_method(method), m_body(std::move(body)), m_uri(std::move(uri)),
       m_headers(std::move(headers))
+{
+    m_type = HttpType::REQUEST;
+}
+
+HttpMessage::HttpMessage(HttpVersion version, HttpMethod method, std::string uri,
+                         std::unordered_map<std::string, std::string> headers)
+    : m_version(version), m_method(method), m_uri(std::move(uri)), m_headers(std::move(headers))
 {
     m_type = HttpType::REQUEST;
 }

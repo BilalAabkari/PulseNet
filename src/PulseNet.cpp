@@ -1,5 +1,6 @@
 ﻿#include "Commands.h"
 #include "networking/Client.h"
+#include "networking/LoggerManager.h"
 #include "networking/TCPServer.h"
 #include "networking/ThreadPool.h"
 #include "networking/http/HttpAssembler.h"
@@ -13,11 +14,11 @@
 
 std::string handleRequest(const pulse::net::HttpMessage &message, uint64_t id, int port, const std::string &ip)
 {
-    std::cout << "*********************************************************"
+    std::cout << "\n*********************************************************"
                  "********\n";
     std::cout << "CLIENT ID: " << std::to_string(id) << "\nIP ADDRESS: " << ip << "\nPORT: " << std::to_string(port)
               << "\n\n";
-    std::cout << message.serialize();
+    std::cout << message.serialize() << '\n';
 
     std::ostringstream response_body;
     response_body << "{\n"
@@ -40,10 +41,10 @@ int main()
     parser.read();
 
     /********** Initialize sockets ***********/
-    std::unique_ptr<pulse::net::HttpAssembler> assembler = std::make_unique<pulse::net::HttpAssembler>();
-    assembler->enableLogs();
-
+    auto assembler = std::make_unique<pulse::net::HttpAssembler>();
     pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "127.0.0.1", 2, std::move(assembler));
+
+    pulse::net::LoggerManager::setLevel(pulse::net::SEVERITY::TRACE);
 
     try
     {
@@ -74,7 +75,6 @@ int main()
     });
 
     test.run();
-
     console.run();
 
     return 0;

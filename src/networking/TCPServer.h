@@ -309,8 +309,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         }
         else
         {
-            LoggerManager::get_logger()->write("[WARN]", "Tried to send a message to client " + std::to_string(id) +
-                                                             " but it's not connected");
+            LoggerManager::get_logger()->write(SEVERITY::INFO, "Tried to send a message to client " +
+                                                                   std::to_string(id) + " but it's not connected");
         }
     }
 
@@ -532,7 +532,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
     /*
      * @bried Creates a request after reveiving from client
      */
-    std::unique_ptr<Request> createRequest(Client &client, Assembler::MessageType message)
+    std::unique_ptr<typename Request> createRequest(Client &client, Assembler::MessageType message)
     {
         std::unique_ptr<Request> request = std::make_unique<Request>();
         request->client.id = client.getId();
@@ -582,6 +582,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
                     postReceiveEvent(*client);
                     client->decreaseReferenceCount();
                 }
+
+                client->decreaseReferenceCount();
             }
         }
     }
@@ -671,16 +673,17 @@ template <ValidAssembler Assembler> class TCPServer : public Server
 
         if (m_server_socket == NULL)
         {
-            LoggerManager::get_logger()->write("[WARN]", "Tried to post an accept event to IOCP, but the server socket "
-                                                         "is not set");
+            LoggerManager::get_logger()->write(SEVERITY::WARN,
+                                               "Tried to post an accept event to IOCP, but the server socket "
+                                               "is not set");
             return false;
         }
 
         if (m_accept_ctx == nullptr)
         {
-            LoggerManager::get_logger()->write("[WARN]", "Tried to post an accept event to IOCP, but the accept "
-                                                         "context object "
-                                                         "is not created");
+            LoggerManager::get_logger()->write(SEVERITY::WARN, "Tried to post an accept event to IOCP, but the accept "
+                                                               "context object "
+                                                               "is not created");
             return false;
         }
 
@@ -698,7 +701,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         if (!acceptEx_result && WSAGetLastError() != WSA_IO_PENDING)
         {
             int error_code = WSAGetLastError();
-            LoggerManager::get_logger()->write("[WARN]", "AcceptEx failed with error code: " + error_code);
+            LoggerManager::get_logger()->write(SEVERITY::WARN, "AcceptEx failed with error code: " + error_code);
 
             closesocket(accept_context.client_socket);
             accept_context.client_socket = INVALID_SOCKET;
@@ -788,7 +791,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
         {
             int error_code = WSAGetLastError();
-            LoggerManager::get_logger()->write("[WARN]", "WSARecv failed with error code: " + error_code);
+            LoggerManager::get_logger()->write(SEVERITY::WARN, "WSARecv failed with error code: " + error_code);
             error = true;
         }
         else if (result == 0) // Completed immediately
@@ -812,7 +815,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
 
         if (message.size() > MAX_BUFFER_LENGHT_FOR_REQUESTS)
         {
-            LoggerManager::get_logger()->write("[WARN]", "Message is larger than max lenght.");
+            LoggerManager::get_logger()->write(SEVERITY::INFO,
+                                               "Cound not send post send event: Message is larger than max lenght.");
             client.disconnect();
         }
         else
@@ -835,27 +839,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
             if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
             {
                 int error_code = WSAGetLastError();
-                LoggerManager::get_logger()->write("[WARN]", "WSARecv failed with error code: " + error_code);
+                LoggerManager::get_logger()->write(SEVERITY::WARN, "WSARecv failed with error code: " + error_code);
                 client.disconnect();
-            }
-            else if (result == 0)
-            {
-
-                bool success = PostQueuedCompletionStatus(iocp, bytesSent, reinterpret_cast<ULONG_PTR>(&client),
-                                                          client.getSendOverlapped());
-                if (!success)
-                {
-                    int error_code = WSAGetLastError();
-                    LoggerManager::get_logger()->write("[WARN]", "PostQueuedCompletionStatus failed with error code: " +
-                                                                     error_code);
-
-                    client.disconnect();
-                }
-                else
-                {
-                    client.m_is_sending = true;
-                    client.increaseReferenceCount();
-                }
             }
             else
             {
