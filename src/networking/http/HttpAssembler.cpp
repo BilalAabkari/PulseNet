@@ -130,6 +130,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                 client_state.state = HttpState::STATE_PARSE_HEADER_NAME;
                 client_state.i_start = i + 1;
                 client_state.i_end = i + 1;
+                client_state.last_checkpoint = i + 1;
             }
             else if (client_state.length_counter > m_max_request_line_lenght)
             {
@@ -183,6 +184,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     client_state.state = HttpState::STATE_PARSE_HEADER_NAME;
                     client_state.i_start = i + 1;
                     client_state.i_end = i + 1;
+                    client_state.last_checkpoint = i + 1;
                     client_state.length_counter = 0;
                 }
                 else if (part == "HTTP/1.1")
@@ -191,6 +193,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     client_state.state = HttpState::STATE_PARSE_HEADER_NAME;
                     client_state.i_start = i + 1;
                     client_state.i_end = i + 1;
+                    client_state.last_checkpoint = i + 1;
                     client_state.length_counter = 0;
                 }
                 else
@@ -268,6 +271,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                             client_state.body_lenght = length;
                             client_state.i_start = i + 1;
                             client_state.i_end = i + 1;
+                            client_state.length_counter = 0;
                         }
                         else if (length > m_max_body_size)
                         {
@@ -347,6 +351,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     // TODO: IF KEY EXISTS, APPEND
                     client_state.headers.emplace(Utils::toLowerAscii(header_name), header_value);
                     client_state.state = HttpState::STATE_PARSE_HEADER_NAME;
+                    client_state.last_checkpoint = i + 1;
                     client_state.i_start = i + 1;
                     client_state.i_end = i + 1;
                 }
@@ -368,8 +373,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             break;
         case HttpState::STATE_PARSE_BODY: {
-            client_state.i_end++;
-            int size = client_state.i_end - client_state.i_start;
+            int size = client_state.length_counter;
+
             if (size > m_max_body_size)
             {
                 log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) +
@@ -379,12 +384,26 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             else if (size == client_state.body_lenght)
             {
-                std::string body(buffer + client_state.i_start, client_state.body_lenght);
                 // TODO: INVESTIGATE HOW TO DEAL WITH HEADERS AND URI IN CHUNKED
                 //       REQUESTS WITHOUT A PERFORMANCE HIT.
-                result.messages.emplace_back(client_state.http_version, client_state.method,
-                                             std::move(client_state.uri), std::move(client_state.headers),
-                                             std::move(body));
+
+                if (client_state.body.empty())
+                {
+
+                    std::string body(buffer + client_state.i_start, client_state.body_lenght);
+
+                    result.messages.emplace_back(client_state.http_version, client_state.method,
+                                                 std::move(client_state.uri), std::move(client_state.headers),
+                                                 std::move(body));
+                }
+                else
+                {
+                    client_state.body.append(buffer + client_state.i_start, client_state.pos + 1);
+
+                    result.messages.emplace_back(client_state.http_version, client_state.method,
+                                                 std::move(client_state.uri), std::move(client_state.headers),
+                                                 std::move(client_state.body));
+                }
 
                 if (client_state.pos == buffer_len - 1)
                 {
@@ -409,13 +428,21 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
 
                 if (Utils::parseHexadecimal(std::string_view(buffer + client_state.i_start, size - 1), length))
                 {
-                    if (length > 0)
+                    if (length > m_max_body_memory_buffer)
+                    {
+                        log(SEVERITY::INFO,
+                            "Rejected http request of connection " + std::to_string(id) + ": Chunk size too large");
+                        client_state.state = HttpState::STATE_ERROR;
+                    }
+                    else if (length > 0)
                     {
                         client_state.current_chunk_length = length;
                         client_state.state = HttpState::STATE_PARSE_CHUNK;
                         client_state.i_start = i + 1;
                         client_state.i_end = i + 1;
                         client_state.body_lenght += length;
+                        client_state.body.clear();
+                        client_state.length_counter = 0;
                     }
                     else
                     {
@@ -447,19 +474,32 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
         }
         case HttpState::STATE_PARSE_CHUNK: {
             client_state.i_end++;
-            int size = client_state.i_end - client_state.i_start;
+            int size = client_state.length_counter;
+
             if (size == client_state.current_chunk_length)
             {
                 if (m_assemble_chunked_requests)
                 {
+                    // This feature should probabily be removed
                 }
                 else
                 {
+                    if (client_state.body.empty())
+                    {
 
-                    std::string body(buffer + client_state.i_start, client_state.current_chunk_length);
+                        std::string body(buffer + client_state.i_start, client_state.current_chunk_length);
 
-                    result.messages.emplace_back(client_state.http_version, client_state.method, client_state.uri,
-                                                 std::move(client_state.headers), std::move(body));
+                        result.messages.emplace_back(client_state.http_version, client_state.method, client_state.uri,
+                                                     std::move(client_state.headers), std::move(body));
+                    }
+                    else
+                    {
+                        client_state.body.append(buffer + client_state.i_start, client_state.pos + 1);
+
+                        result.messages.emplace_back(client_state.http_version, client_state.method, client_state.uri,
+                                                     std::move(client_state.headers), std::move(client_state.body));
+                        client_state.body.clear();
+                    }
 
                     if (client_state.pos == buffer_len - 1)
                     {
@@ -558,6 +598,57 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
         client_state.pos++;
     }
 
+    if (client_state.state != HttpState::STATE_ERROR &&
+        client_state.pos == max_buffer_len) // If the buffer is full, we try to free some space
+    {
+        if (client_state.state == HttpState::STATE_PARSE_BODY)
+        {
+            if (client_state.body.empty())
+            {
+                client_state.body.reserve(client_state.body_lenght + 1);
+            }
+
+            client_state.body.append(buffer + client_state.i_start, client_state.pos - client_state.i_start);
+            buffer_len = 0;
+            client_state.i_start = 0;
+            client_state.i_end = 0;
+            client_state.pos = 0;
+        }
+        else if (client_state.state == HttpState::STATE_PARSE_CHUNK)
+        {
+            if (client_state.body.empty())
+            {
+                client_state.body.reserve(client_state.current_chunk_length + 1);
+            }
+
+            client_state.body.append(buffer + client_state.i_start, client_state.pos - client_state.i_start);
+            buffer_len = 0;
+            client_state.i_start = 0;
+            client_state.i_end = 0;
+            client_state.pos = 0;
+        }
+        else if (client_state.last_checkpoint == -1)
+        {
+            client_state.state = HttpState::STATE_ERROR;
+            log(SEVERITY::INFO, "Rejected http request of connection " + std::to_string(id) + ": Out of buffer memory");
+        }
+        else
+        {
+
+            std::memmove(buffer, buffer + client_state.last_checkpoint, client_state.last_checkpoint);
+            client_state.i_start = std::max(client_state.i_start - client_state.last_checkpoint, 0);
+            client_state.i_end = std::max(client_state.i_end - client_state.last_checkpoint, 0);
+            client_state.header_name_start = std::max(client_state.header_name_start - client_state.last_checkpoint, 0);
+            client_state.header_name_end = std::max(client_state.header_name_end - client_state.last_checkpoint, 0);
+            client_state.header_value_start =
+                std::max(client_state.header_value_start - client_state.last_checkpoint, 0);
+            client_state.header_value_end = std::max(client_state.header_value_end - client_state.last_checkpoint, 0);
+            buffer_len -= client_state.last_checkpoint;
+            client_state.pos -= client_state.last_checkpoint;
+            client_state.last_checkpoint = -1;
+        }
+    }
+
     if (client_state.state == HttpState::STATE_ERROR)
     {
         result.error = true;
@@ -594,7 +685,27 @@ void HttpAssembler::setMaxRequestHeaderBytes(int length)
 
 void HttpAssembler::setMaxBodySize(int length)
 {
+    if (length < m_max_body_memory_buffer)
+    {
+
+        log(SEVERITY::S_ERROR, "Maximum allowed size for the body can't be "
+                               "smaller than maximum buffer size allocated for the body");
+        return;
+    }
     m_max_body_size = length;
+}
+
+void HttpAssembler::setMaxBodyMemoryBuffer(int length)
+{
+    if (length > m_max_body_size)
+    {
+
+        log(SEVERITY::S_ERROR, "Max Memory buffer allocated for the body can't be "
+                               "bigger than maximum posible size of the body");
+        return;
+    }
+
+    m_max_body_memory_buffer = length;
 }
 
 void HttpAssembler::resetState(HttpStreamState &state) const
@@ -620,6 +731,8 @@ void HttpAssembler::resetState(HttpStreamState &state) const
     state.length_counter = 0;
     state.total_headers_counter = 0;
     state.current_chunk_length = 0;
+    state.last_checkpoint = -1;
+    state.body.clear();
 
     state.pos = 0;
 }

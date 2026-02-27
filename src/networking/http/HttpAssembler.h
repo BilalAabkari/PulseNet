@@ -22,6 +22,7 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
     void setMaxRequestLineLength(int length);
     void setMaxRequestHeaderBytes(int length);
     void setMaxBodySize(int length);
+    void setMaxBodyMemoryBuffer(int lenght);
 
   private:
     enum class TransferMode
@@ -59,6 +60,7 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
         HttpVersion http_version = HttpVersion::UNKNOWN;
 
         std::unordered_map<std::string, std::string> headers;
+        std::string body;
 
         HttpState state = HttpState::STATE_PARSE_RESPONSE_OR_REQUEST;
         HttpMethod method = HttpMethod::UNKNOWN;
@@ -72,6 +74,8 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
         int header_value_start = 0, header_value_end = 0;
 
         int length_counter = 0, total_headers_counter = 0;
+
+        int last_checkpoint = -1;
     };
 
     std::unordered_map<uint64_t, HttpStreamState> m_client_states;
@@ -84,7 +88,8 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
 
     int m_max_request_line_lenght = 4096;
     int m_max_total_headers = 8192;
-    int m_max_body_size = 1E6;
+    int m_max_body_memory_buffer = 1024 * 1024;
+    int m_max_body_size = 100 * 1024 * 1024;
 
     bool m_logs_enabled = false;
 };

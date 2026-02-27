@@ -26,6 +26,8 @@ class HttpMessage : public JSONSerializable
 
     void setBody(std::string &&body);
 
+    std::string rawBody();
+
     void addHeader(const std::string &name, const std::string &value);
 
   private:

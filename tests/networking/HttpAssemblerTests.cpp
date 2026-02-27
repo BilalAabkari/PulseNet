@@ -267,6 +267,102 @@ TEST(HttpParserTest, SuccessChunkedMessageAfterFiniteMessage)
                   // chunked request + the finite message
 }
 
+TEST(HttpParserTest, SuccessStreamedMessageWithSmallBuffer)
+{
+    pulse::net::HttpAssembler assembler;
+    assembler.setMaxBodyMemoryBuffer(32);
+
+    const char data[] = "POST /upload HTTP/1.1\r\n"
+                        "Host: example.com\r\n"
+                        "Content-Length: 228\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Connection: keep-alive\r\n"
+                        "\r\n"
+                        "This is a long body with more than thirty characters!!!!!"
+                        "This is a long body with more than thirty characters!!!!!"
+                        "This is a long body with more than thirty characters!!!!!"
+                        "This is a long body with more than thirty characters!!!!!";
+
+    const int dataLen = sizeof(data) - 1;
+    const int maxBufLen = 32;
+
+    char buffer[maxBufLen];
+    int buffer_len = 0;
+
+    int dataOffset = 0;
+    pulse::net::HttpAssembler::AssemblingResult result;
+
+    while (dataOffset < dataLen)
+    {
+        // Fill buffer up to capacity with next chunk of data
+        int space = maxBufLen - buffer_len;
+        int toCopy = std::min(space, dataLen - dataOffset);
+        std::memcpy(buffer + buffer_len, data + dataOffset, toCopy);
+        buffer_len += toCopy;
+        dataOffset += toCopy;
+
+        result = assembler.feed(1, buffer, buffer_len, maxBufLen, toCopy);
+
+        EXPECT_FALSE(result.error);
+
+        if (dataOffset < dataLen)
+        {
+            EXPECT_TRUE(result.messages.empty());
+        }
+    }
+
+    EXPECT_EQ(result.messages.size(), 1);
+}
+
+TEST(HttpParserTest, SuccessStreamedChunkedMessageWithSmallBuffer)
+{
+    pulse::net::HttpAssembler assembler;
+
+    const char data[] = "POST /upload HTTP/1.1\r\n"
+                        "Host: example.com\r\n"
+                        "Transfer-Encoding: chunked\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "\r\n"
+                        "24\r\n"
+                        "abcdefghijklmnopqrstuvwxyz1234567890\r\n"
+                        "1e\r\n"
+                        "The_quick_brown_fox_jumps_over\r\n"
+                        "1c\r\n"
+                        "Lorem_ipsum_dolor_sit_amet!!\r\n"
+                        "0\r\n"
+                        "\r\n";
+
+    const int dataLen = sizeof(data) - 1;
+    const int maxBufLen = 32;
+
+    char buffer[maxBufLen];
+    int buffer_len = 0;
+
+    int dataOffset = 0;
+    pulse::net::HttpAssembler::AssemblingResult result;
+
+    std::vector<std::string> messages;
+
+    while (dataOffset < dataLen)
+    {
+        int space = maxBufLen - buffer_len;
+        int toCopy = std::min(space, dataLen - dataOffset);
+        std::memcpy(buffer + buffer_len, data + dataOffset, toCopy);
+        buffer_len += toCopy;
+        dataOffset += toCopy;
+
+        result = assembler.feed(1, buffer, buffer_len, maxBufLen, toCopy);
+
+        for (auto &msg : result.messages)
+            messages.push_back(msg.rawBody());
+
+        EXPECT_FALSE(result.error);
+    }
+
+    // Chunked requests emit one message per chunk (3 chunks + final empty)
+    EXPECT_EQ(messages.size(), 4);
+}
+
 //*************************************************************************************
 //**********************        NEGATIVE TESTS       **********************************
 //*************************************************************************************
@@ -372,7 +468,9 @@ TEST(HttpParserTest, BodyTooLong)
 
     EXPECT_FALSE(result.error);
 
+    assembler.setMaxBodyMemoryBuffer(6);
     assembler.setMaxBodySize(6);
+
     length = sizeof(buffer) - 1;
 
     result = assembler.feed(2, buffer, length, 8096, length);

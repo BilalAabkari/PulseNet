@@ -55,6 +55,11 @@ void HttpMessage::setBody(std::string &&body)
     m_body = std::move(body);
 }
 
+std::string HttpMessage::rawBody()
+{
+    return m_body;
+}
+
 void HttpMessage::addHeader(const std::string &name, const std::string &value)
 {
     auto it = m_headers.find(name);

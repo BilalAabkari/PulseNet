@@ -71,7 +71,7 @@ int main()
         std::string response =
             handleRequest(message, request->client.id, request->client.port, request->client.ip_address);
 
-        server.send(request->client.id, response);
+        // server.send(request->client.id, response);
     });
 
     test.run();

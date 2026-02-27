@@ -38,11 +38,14 @@ class Utils
 
             if (value[i] == '"')
             {
+                i++;
+                i_start = i;
                 quoted = true;
-                while (i < value.size() - 1)
+
+                while (i < value.size() && value[i] != '"')
                 {
-                    if (value[i] != '\\' && value[i + 1] == '"')
-                        break;
+                    if (value[i] == '\\')
+                        i++;
                     i++;
                 }
 
@@ -51,9 +54,6 @@ class Utils
                     // Not found the next quote, which means maformed value
                     break;
                 }
-
-                i++; // Skip the quote
-                i_start++;
             }
             else
             {

@@ -245,7 +245,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
                             else
                             {
 
-                                client->m_recv_len = bytes;
+                                client->m_recv_len += bytes;
                                 m_assembling_queue.push(std::make_unique<uint64_t>(client->getId()));
                             }
                         }
@@ -364,7 +364,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
     {
         OVERLAPPED overlapped;
         SOCKET client_socket;
-        char rcv_buffer[MAX_BUFFER_LENGHT_FOR_REQUESTS];
+        char rcv_buffer[4096]; // TODO: PARAMETRIZE THIS
     };
 
     /**
@@ -560,8 +560,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
             {
 
                 typename Assembler::AssemblingResult result =
-                    m_assembler->feed(client->getId(), client->m_recv_buffer, client->m_recv_len,
-                                      MAX_BUFFER_LENGHT_FOR_REQUESTS, client->getLastBytesReceived());
+                    m_assembler->feed(client->getId(), client->m_recv_buffer, client->m_recv_len, m_client_buffer_len,
+                                      client->getLastBytesReceived());
 
                 if (result.error)
                 {
@@ -584,6 +584,11 @@ template <ValidAssembler Assembler> class TCPServer : public Server
                 }
 
                 client->decreaseReferenceCount();
+
+                if (client->isDisconnecting() && client->getReferenceCount() == 0)
+                {
+                    terminateClient(client->getId());
+                }
             }
         }
     }
@@ -779,7 +784,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         DWORD bytes_received = 0;
         WSABUF wsa_buf;
         wsa_buf.buf = client.m_recv_buffer + client.m_recv_len;
-        wsa_buf.len = MAX_BUFFER_LENGHT_FOR_REQUESTS - client.m_recv_len;
+        wsa_buf.len = m_client_buffer_len - client.m_recv_len;
 
         OVERLAPPED *read_overlapped = client.getReadOverlapped();
         ZeroMemory(read_overlapped, sizeof(*read_overlapped));
@@ -794,11 +799,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
             LoggerManager::get_logger()->write(SEVERITY::WARN, "WSARecv failed with error code: " + error_code);
             error = true;
         }
-        else if (result == 0) // Completed immediately
-        {
-            client.m_recv_len = bytes_received;
-            m_assembling_queue.push(std::make_unique<uint64_t>(client.getId()));
-        }
+
         else
         {
             client.increaseReferenceCount();
@@ -813,7 +814,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
     void postSendEvent(Client &client, std::string message)
     {
 
-        if (message.size() > MAX_BUFFER_LENGHT_FOR_REQUESTS)
+        if (message.size() > m_client_buffer_len)
         {
             LoggerManager::get_logger()->write(SEVERITY::INFO,
                                                "Cound not send post send event: Message is larger than max lenght.");
@@ -821,7 +822,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         }
         else
         {
-            strcpy_s(client.m_send_buffer, MAX_BUFFER_LENGHT_FOR_REQUESTS, message.c_str());
+            strcpy_s(client.m_send_buffer, m_client_buffer_len, message.c_str());
             client.m_send_len = message.size();
 
             DWORD bytesSent = 0;

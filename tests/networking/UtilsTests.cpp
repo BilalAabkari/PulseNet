@@ -54,3 +54,9 @@ TEST(NewtworkUtilsTest, TestReadQuotedToken)
     contains = pulse::net::Utils::containsToken("\"gzip\"chunked,fss", "chunked");
     EXPECT_FALSE(contains);
 }
+
+TEST(NewtworkUtilsTest, TestReadEscapedQuotedToken)
+{
+    bool contains = pulse::net::Utils::containsToken("\"he\\\"llo\"", "he\\\"llo");
+    EXPECT_TRUE(contains);
+}
