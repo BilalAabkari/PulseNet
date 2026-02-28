@@ -1,4 +1,5 @@
 #include "HttpMessage.h"
+#include "../Utils.h"
 
 namespace pulse::net
 {
@@ -53,6 +54,22 @@ void HttpMessage::setHttpStatus(HttpStatus status)
 void HttpMessage::setBody(std::string &&body)
 {
     m_body = std::move(body);
+}
+bool HttpMessage::hasHeader(const std::string &header) const
+{
+    return m_headers.find(header) != m_headers.end();
+}
+
+bool HttpMessage::headerContainsValue(const std::string &header, const std::string &value) const
+{
+    auto it = m_headers.find(header);
+
+    if (it == m_headers.end())
+    {
+        return false;
+    }
+
+    return Utils::containsToken(value, it->second);
 }
 
 std::string HttpMessage::rawBody()

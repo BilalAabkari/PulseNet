@@ -12,26 +12,6 @@
 #include <locale>
 #include <thread>
 
-std::string handleRequest(const pulse::net::HttpMessage &message, uint64_t id, int port, const std::string &ip)
-{
-    std::cout << "\n*********************************************************"
-                 "********\n";
-    std::cout << "CLIENT ID: " << std::to_string(id) << "\nIP ADDRESS: " << ip << "\nPORT: " << std::to_string(port)
-              << "\n\n";
-    std::cout << message.serialize() << '\n';
-
-    std::ostringstream response_body;
-    response_body << "{\n"
-                  << "\"message\" : \"Message received!\"\n"
-                  << "}";
-
-    pulse::net::HttpMessage response(pulse::net::HttpVersion::HTTP_1_1, pulse::net::HttpStatus::OK,
-                                     response_body.str());
-    response.addHeader("Content-Type", "application/json");
-
-    return response.serialize();
-}
-
 int main()
 {
     Logger &logger = Logger::getInstance();
@@ -42,7 +22,7 @@ int main()
 
     /********** Initialize sockets ***********/
     auto assembler = std::make_unique<pulse::net::HttpAssembler>();
-    pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "127.0.0.1", 2, std::move(assembler));
+    pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "0.0.0.0", 8, std::move(assembler));
 
     pulse::net::LoggerManager::setLevel(pulse::net::SEVERITY::TRACE);
 
@@ -63,15 +43,23 @@ int main()
     pulse::utils::Console console;
     registerCommands(console, server);
 
-    pulse::net::ThreadPool test(1, [&server]() {
+    pulse::net::ThreadPool test(4, [&server]() {
         auto request = server.next();
 
         pulse::net::HttpMessage message = request->message;
 
-        std::string response =
-            handleRequest(message, request->client.id, request->client.port, request->client.ip_address);
+        static const std::string RESPONSE = "HTTP/1.1 200 OK\r\n"
+                                            "Content-Type: application/json\r\n"
+                                            "Content-Length: 35\r\n"
+                                            "\r\n"
+                                            "{\n\"message\" : \"Message received!\"\n}";
 
-        // server.send(request->client.id, response);
+        bool isChunked = message.headerContainsValue("transfer-encoding", "chunked");
+
+        if ((isChunked && message.rawBody().size() == 0) || !isChunked)
+        {
+            server.send(request->client.id, RESPONSE);
+        }
     });
 
     test.run();

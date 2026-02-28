@@ -4,7 +4,7 @@
 #include "../constants.h"
 #include "HttpHelpers.h"
 #include "HttpMessage.h"
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -79,7 +79,7 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
     };
 
     std::unordered_map<uint64_t, HttpStreamState> m_client_states;
-    std::mutex m_mtx;
+    std::shared_mutex m_mtx;
     bool m_assemble_chunked_requests = false;
 
     void resetState(HttpStreamState &state) const;

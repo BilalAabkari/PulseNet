@@ -811,7 +811,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         }
     }
 
-    void postSendEvent(Client &client, std::string message)
+    void postSendEvent(Client &client, const std::string &message)
     {
 
         if (message.size() > m_client_buffer_len)

@@ -16,9 +16,27 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                                                     int last_tcp_packet_len)
 {
 
-    std::lock_guard lock(m_mtx);
+    std::shared_lock lock(m_mtx);
 
-    HttpStreamState &client_state = m_client_states[id];
+    HttpStreamState *client_state_ptr;
+
+    auto it = m_client_states.find(id);
+    if (it != m_client_states.end())
+    {
+        client_state_ptr = &it->second;
+        lock.unlock();
+    }
+    else
+    {
+        lock.unlock();
+        std::unique_lock u_lock(m_mtx);
+
+        client_state_ptr = &m_client_states[id];
+
+        u_lock.unlock();
+    }
+
+    HttpStreamState &client_state = *client_state_ptr; // For convenience
 
     bool finished = false;
 

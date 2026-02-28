@@ -26,6 +26,10 @@ class HttpMessage : public JSONSerializable
 
     void setBody(std::string &&body);
 
+    bool hasHeader(const std::string &header) const;
+
+    bool headerContainsValue(const std::string &header, const std::string &value) const;
+
     std::string rawBody();
 
     void addHeader(const std::string &name, const std::string &value);
