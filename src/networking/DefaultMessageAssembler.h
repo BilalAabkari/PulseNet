@@ -14,10 +14,10 @@ class DefaultMessageAssembler : public TCPMessageAssembler<std::string>
                                   int last_tcp_packet_len)
     {
 
-        std::vector<std::string> messages;
+        std::vector<std::shared_ptr<std::string>> messages;
         if (buffer_len > 0 && buffer != nullptr)
         {
-            messages.emplace_back(buffer, buffer_len);
+            messages.push_back(std::make_shared<std::string>(buffer, buffer_len));
             buffer_len = 0;
         }
         AssemblingResult result;

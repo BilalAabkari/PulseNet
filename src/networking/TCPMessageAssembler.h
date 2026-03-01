@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LoggerManager.h"
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -14,7 +15,7 @@ template <typename T> class TCPMessageAssembler
 
     struct AssemblingResult
     {
-        std::vector<MessageType> messages;
+        std::vector<std::shared_ptr<MessageType>> messages;
         bool error = false;
         std::string error_message;
     };

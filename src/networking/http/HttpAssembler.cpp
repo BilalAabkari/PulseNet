@@ -309,8 +309,9 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     else // NO BODY
                     {
 
-                        result.messages.emplace_back(client_state.http_version, client_state.method, client_state.uri,
-                                                     std::move(client_state.headers));
+                        result.messages.push_back(std::make_shared<HttpMessage>(client_state.http_version,
+                                                                                client_state.method, client_state.uri,
+                                                                                std::move(client_state.headers)));
 
                         if (client_state.pos == buffer_len - 1)
                         {
@@ -410,17 +411,17 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
 
                     std::string body(buffer + client_state.i_start, client_state.body_lenght);
 
-                    result.messages.emplace_back(client_state.http_version, client_state.method,
-                                                 std::move(client_state.uri), std::move(client_state.headers),
-                                                 std::move(body));
+                    result.messages.push_back(std::make_shared<HttpMessage>(
+                        client_state.http_version, client_state.method, std::move(client_state.uri),
+                        std::move(client_state.headers), std::move(body)));
                 }
                 else
                 {
                     client_state.body.append(buffer + client_state.i_start, client_state.pos + 1);
 
-                    result.messages.emplace_back(client_state.http_version, client_state.method,
-                                                 std::move(client_state.uri), std::move(client_state.headers),
-                                                 std::move(client_state.body));
+                    result.messages.push_back(std::make_shared<HttpMessage>(
+                        client_state.http_version, client_state.method, std::move(client_state.uri),
+                        std::move(client_state.headers), std::move(client_state.body)));
                 }
 
                 if (client_state.pos == buffer_len - 1)
@@ -507,15 +508,18 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
 
                         std::string body(buffer + client_state.i_start, client_state.current_chunk_length);
 
-                        result.messages.emplace_back(client_state.http_version, client_state.method, client_state.uri,
-                                                     std::move(client_state.headers), std::move(body));
+                        result.messages.push_back(std::make_shared<HttpMessage>(
+                            client_state.http_version, client_state.method, client_state.uri,
+                            std::move(client_state.headers), std::move(body)));
                     }
                     else
                     {
                         client_state.body.append(buffer + client_state.i_start, client_state.pos + 1);
 
-                        result.messages.emplace_back(client_state.http_version, client_state.method, client_state.uri,
-                                                     std::move(client_state.headers), std::move(client_state.body));
+                        result.messages.push_back(std::make_shared<HttpMessage>(
+                            client_state.http_version, client_state.method, client_state.uri,
+                            std::move(client_state.headers), std::move(client_state.body)));
+
                         client_state.body.clear();
                     }
 
@@ -570,9 +574,9 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             int size = client_state.i_end + 1 - client_state.i_start;
             if (size == 2 && c == '\n' && buffer[i - 1] == '\r')
             {
-
-                result.messages.emplace_back(client_state.http_version, client_state.method,
-                                             std::move(client_state.uri), std::move(client_state.headers), "");
+                result.messages.push_back(std::make_shared<HttpMessage>(client_state.http_version, client_state.method,
+                                                                        std::move(client_state.uri),
+                                                                        std::move(client_state.headers), ""));
 
                 if (client_state.pos == buffer_len - 1)
                 {

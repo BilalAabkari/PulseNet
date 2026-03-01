@@ -60,7 +60,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
     struct Request
     {
         ClientDto client;
-        MessageType message;
+        std::shared_ptr<MessageType> message;
     };
 
     /* ----------------
@@ -532,17 +532,15 @@ template <ValidAssembler Assembler> class TCPServer : public Server
     /*
      * @bried Creates a request after reveiving from client
      */
-    std::unique_ptr<typename Request> createRequest(Client &client, Assembler::MessageType message)
+    std::unique_ptr<Request> createRequest(Client &client, std::shared_ptr<typename Assembler::MessageType> message)
     {
-        std::unique_ptr<Request> request = std::make_unique<Request>();
-        request->client.id = client.getId();
-
+        ClientDto dto;
         std::pair<int, std::string> address = client.getAddress();
-        request->client.ip_address = std::move(address.second);
-        request->client.port = address.first;
-        request->message = std::move(message);
+        dto.ip_address = std::move(address.second);
+        dto.port = address.first;
+        dto.id = client.getId();
 
-        return request;
+        return std::make_unique<Request>(Request{dto, message});
     }
 
     /* ----------------
@@ -571,9 +569,9 @@ template <ValidAssembler Assembler> class TCPServer : public Server
                 else
                 {
 
-                    for (typename Assembler::MessageType message : result.messages)
+                    for (std::shared_ptr<typename Assembler::MessageType> message : result.messages)
                     {
-                        std::unique_ptr<Request> r = createRequest(*client, std::move(message));
+                        std::unique_ptr<Request> r = createRequest(*client, message);
                         m_requests_queue.push(std::move(r));
                     }
 

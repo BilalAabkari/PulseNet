@@ -46,7 +46,7 @@ int main()
     pulse::net::ThreadPool test(4, [&server]() {
         auto request = server.next();
 
-        pulse::net::HttpMessage message = request->message;
+        std::shared_ptr<pulse::net::HttpMessage> message = request->message;
 
         static const std::string RESPONSE = "HTTP/1.1 200 OK\r\n"
                                             "Content-Type: application/json\r\n"
@@ -54,9 +54,9 @@ int main()
                                             "\r\n"
                                             "{\n\"message\" : \"Message received!\"\n}";
 
-        bool isChunked = message.headerContainsValue("transfer-encoding", "chunked");
+        bool isChunked = message->headerContainsValue("transfer-encoding", "chunked");
 
-        if ((isChunked && message.rawBody().size() == 0) || !isChunked)
+        if ((isChunked && message->rawBody().size() == 0) || !isChunked)
         {
             server.send(request->client.id, RESPONSE);
         }

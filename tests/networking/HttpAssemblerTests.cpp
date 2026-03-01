@@ -354,7 +354,7 @@ TEST(HttpParserTest, SuccessStreamedChunkedMessageWithSmallBuffer)
         result = assembler.feed(1, buffer, buffer_len, maxBufLen, toCopy);
 
         for (auto &msg : result.messages)
-            messages.push_back(msg.rawBody());
+            messages.push_back(msg->rawBody());
 
         EXPECT_FALSE(result.error);
     }
