@@ -492,12 +492,9 @@ template <ValidAssembler Assembler> class TCPServer : public Server
     {
         std::unique_lock lock(m_mtx);
 
-        std::unique_ptr client = std::make_unique<Client>(id, port, ipAddress, sock);
-
-        m_client_list.insert({client->getId(), std::move(client)});
-
-        m_client_list.at(id)->increaseReferenceCount();
-        return m_client_list.at(id).get();
+        auto [it, _] = m_client_list.emplace(id, std::make_unique<Client>(id, port, ipAddress, sock));
+        it->second->increaseReferenceCount();
+        return it->second.get();
     }
 
     Client *getClient(uint64_t id)
@@ -540,7 +537,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         dto.port = address.first;
         dto.id = client.getId();
 
-        return std::make_unique<Request>(Request{dto, message});
+        return std::make_unique<Request>(Request{std::move(dto), message});
     }
 
     /* ----------------
@@ -569,7 +566,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
                 else
                 {
 
-                    for (std::shared_ptr<typename Assembler::MessageType> message : result.messages)
+                    for (std::shared_ptr<typename Assembler::MessageType> &message : result.messages)
                     {
                         std::unique_ptr<Request> r = createRequest(*client, message);
                         m_requests_queue.push(std::move(r));

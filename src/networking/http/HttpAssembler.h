@@ -54,9 +54,20 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
     struct HttpStreamState
     {
         int pos = 0;
-        TransferMode transfer_mode = TransferMode::UNKNOWN;
+
+        int i_start = 0, i_end = 0;
+        int header_name_start = 0, header_name_end = 0;
+        int header_value_start = 0, header_value_end = 0;
+
+        int length_counter = 0, total_headers_counter = 0;
+
+        int last_checkpoint = -1;
+
         int body_lenght = -1;
         int current_chunk_length = 0;
+
+        TransferMode transfer_mode = TransferMode::UNKNOWN;
+
         HttpVersion http_version = HttpVersion::UNKNOWN;
 
         std::unordered_map<std::string, std::string> headers;
@@ -68,14 +79,6 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
         int http_code = -1;
 
         std::string uri;
-
-        int i_start = 0, i_end = 0;
-        int header_name_start = 0, header_name_end = 0;
-        int header_value_start = 0, header_value_end = 0;
-
-        int length_counter = 0, total_headers_counter = 0;
-
-        int last_checkpoint = -1;
     };
 
     std::unordered_map<uint64_t, HttpStreamState> m_client_states;
