@@ -36,7 +36,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
         u_lock.unlock();
     }
 
-    HttpStreamState &client_state = *client_state_ptr; // For convenience
+    HttpStreamState &client_state = m_client_states[id]; // For convenience
 
     bool finished = false;
 

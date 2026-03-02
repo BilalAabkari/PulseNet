@@ -69,7 +69,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
      */
     TCPServer(int port, std::string ip_address = ANY_IP, int assembler_workers = 2,
               std::unique_ptr<Assembler> assembler = nullptr)
-        : m_listening(false), m_assembler_thread_pool(assembler_workers, [this]() { this->assemblerWorker(); }),
+        : m_listening(false), m_assembler_thread_pool(assembler_workers, [this](int id) { this->assemblerWorker(id); }),
           m_ip_address(ip_address), m_port(port)
     {
         m_server_address.sin_family = AF_INET;
@@ -91,6 +91,11 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         else
         {
             m_assembler = std::move(assembler);
+        }
+
+        for (int i = 0; i < assembler_workers; i++)
+        {
+            m_assembling_queues.push_back(std::make_unique<ThreadSafeQueue<uint64_t>>());
         }
     }
 
@@ -246,7 +251,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
                             {
 
                                 client->m_recv_len += bytes;
-                                m_assembling_queue.push(std::make_unique<uint64_t>(client->getId()));
+                                m_assembling_queues[client->getId() % m_assembling_queues.size()]->push(
+                                    std::make_unique<uint64_t>(client->getId()));
                             }
                         }
                         else if (overlapped == client->getSendOverlapped())
@@ -488,6 +494,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
 
     std::unique_ptr<Assembler> m_assembler;
 
+    std::vector<std::unique_ptr<ThreadSafeQueue<uint64_t>>> m_assembling_queues{};
+
     Client *addClient(uint64_t id, int port, std::string ipAddress, SOCKET sock)
     {
         std::unique_lock lock(m_mtx);
@@ -545,11 +553,11 @@ template <ValidAssembler Assembler> class TCPServer : public Server
      * ----------------
      */
 
-    void assemblerWorker()
+    void assemblerWorker(int id)
     {
         while (m_listening)
         {
-            std::unique_ptr<uint64_t> client_id = m_assembling_queue.pop();
+            std::unique_ptr<uint64_t> client_id = m_assembling_queues[id]->pop();
             Client *client = getClient(*client_id);
             if (client)
             {

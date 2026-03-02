@@ -43,7 +43,7 @@ int main()
     pulse::utils::Console console;
     registerCommands(console, server);
 
-    pulse::net::ThreadPool test(4, [&server]() {
+    pulse::net::ThreadPool test(4, [&server](int id) {
         auto request = server.next();
 
         std::shared_ptr<pulse::net::HttpMessage> message = request->message;

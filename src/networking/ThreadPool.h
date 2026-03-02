@@ -11,7 +11,7 @@ namespace pulse::net
 class ThreadPool
 {
   public:
-    ThreadPool(int workers, std::function<void()> callback);
+    ThreadPool(int workers, std::function<void(int)> callback);
 
     ~ThreadPool();
 
@@ -37,7 +37,7 @@ class ThreadPool
 
     int m_workers;
 
-    std::function<void()> m_callback;
+    std::function<void(int)> m_callback;
 
     std::atomic<bool> m_running;
 

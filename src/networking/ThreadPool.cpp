@@ -5,7 +5,7 @@
 namespace pulse::net
 {
 
-ThreadPool::ThreadPool(int workers, std::function<void()> callback)
+ThreadPool::ThreadPool(int workers, std::function<void(int)> callback)
     : m_workers(workers), m_callback(callback), m_running(false)
 {
     if (workers < 1)
@@ -54,7 +54,7 @@ void ThreadPool::worker(int id)
 
     while (m_running)
     {
-        m_callback();
+        m_callback(id);
     }
 
     m_threads[id].status = Status::IDLE;
