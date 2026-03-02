@@ -504,7 +504,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
 
     std::vector<std::unique_ptr<ThreadSafeQueue<uint64_t>>> m_assembling_queues{};
 
-    Client *addClient(uint64_t id, int port, std::string ipAddress, SOCKET sock)
+    Client *addClient(uint64_t id, int port, const std::string &ipAddress, SOCKET sock)
     {
         std::unique_lock lock(m_mtx);
 
