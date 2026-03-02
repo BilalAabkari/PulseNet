@@ -22,7 +22,7 @@ int main()
 
     /********** Initialize sockets ***********/
     auto assembler = std::make_unique<pulse::net::HttpAssembler>();
-    pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "0.0.0.0", 8, std::move(assembler));
+    pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "0.0.0.0", 2, std::move(assembler));
 
     pulse::net::LoggerManager::setLevel(pulse::net::SEVERITY::TRACE);
 
@@ -47,6 +47,9 @@ int main()
         auto request = server.next();
 
         std::shared_ptr<pulse::net::HttpMessage> message = request->message;
+
+        // std::cout << request->message->rawBody() << '\n';
+        // std::cout << "**************************************************************\n";
 
         static const std::string RESPONSE = "HTTP/1.1 200 OK\r\n"
                                             "Content-Type: application/json\r\n"
