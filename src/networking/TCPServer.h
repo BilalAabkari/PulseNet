@@ -170,12 +170,12 @@ template <ValidAssembler Assembler> class TCPServer : public Server
             if (err != ERROR_IO_PENDING)
             {
                 closeSocket();
-                throw new std::runtime_error("Error executing first acceptEX" + std::to_string(WSAGetLastError()));
+                throw std::runtime_error("Error executing first acceptEX" + std::to_string(WSAGetLastError()));
             }
         }
 
         m_listener_thread = std::thread([this]() {
-            const int MAX_ENTRIES = 16;
+            const int MAX_ENTRIES = 64;
 
             OVERLAPPED_ENTRY overlapped_entries[MAX_ENTRIES];
 
