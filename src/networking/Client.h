@@ -53,7 +53,8 @@ class Client
      * Constructors
      * ----------------
      */
-    Client(uint64_t id, int port, std::string ipAddress, SOCKET_TYPE sock);
+    Client(uint64_t id, int port, std::string ipAddress, int buffer_len, SOCKET_TYPE sock);
+    ~Client();
 
     Client(const Client &client) = delete;
     Client(Client &&client) = delete;
@@ -176,25 +177,16 @@ class Client
      * @note Buffer contents are only valid up to m_recv_len bytes.
      * @warning Not null-terminated by default; treat as binary data.
      */
-    char m_recv_buffer[MAX_BUFFER_LENGHT_FOR_REQUESTS];
+    char *m_recv_buffer;
 
-    /**
-     * @brief Buffer for sending data to the client.
-     *
-     * Fixed-size buffer used to prepare and store outgoing data before
-     * send() operations. Size defined by MAX_BUFFER_LENGHT_FOR_REQUESTS
-     * to match the maximum request/response size.
-     *
-     * @note Buffer contents are only valid up to m_send_len bytes.
-     */
-    char m_send_buffer[MAX_BUFFER_LENGHT_FOR_REQUESTS];
+    int m_max_buffer_len;
 
     int m_recv_len;
     int m_send_len;
 
     bool m_is_sending;
 
-    std::queue<std::string> m_outbound_message_queue;
+    std::queue<std::vector<char>> m_outbound_message_queue;
 
     std::mutex m_send_mtx;
 

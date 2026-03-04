@@ -3,7 +3,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#define NOMINMAX
 
+#include <algorithm>
 #include <functional>
 #include <iomanip>
 #include <iostream>
@@ -262,14 +264,12 @@ template <ValidAssembler Assembler> class TCPServer : public Server
                             else if (e.lpOverlapped == client->getSendOverlapped())
                             {
                                 std::lock_guard lock(client->m_send_mtx);
+                                client->m_outbound_message_queue.pop();
 
                                 if (!client->m_outbound_message_queue.empty())
                                 {
-                                    std::string message = std::move(client->m_outbound_message_queue.front());
-                                    client->m_outbound_message_queue.pop();
-
                                     client->increaseReferenceCount();
-                                    postSendEvent(*client, message);
+                                    postSendEvent(*client, client->m_outbound_message_queue.front());
                                     client->decreaseReferenceCount();
 
                                     if (client->isDisconnecting() && client->getReferenceCount() == 0)
@@ -300,15 +300,28 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         {
             std::lock_guard lock(client->m_send_mtx);
 
-            if (!client->m_is_sending)
+            const size_t msg_size = message.size();
+            if (msg_size <= m_client_buffer_len)
             {
-                client->increaseReferenceCount();
-                postSendEvent(*client, message);
-                client->decreaseReferenceCount();
+                client->m_outbound_message_queue.emplace(message.begin(), message.end());
             }
             else
             {
-                client->m_outbound_message_queue.push(message);
+                size_t offset = 0;
+                while (offset < msg_size)
+                {
+                    const size_t chunk = std::min(m_client_buffer_len, msg_size - offset);
+                    client->m_outbound_message_queue.emplace(message.begin() + offset,
+                                                             message.begin() + offset + chunk);
+                    offset += chunk;
+                }
+            }
+
+            if (!client->m_is_sending)
+            {
+                client->increaseReferenceCount();
+                postSendEvent(*client, client->m_outbound_message_queue.front());
+                client->decreaseReferenceCount();
             }
 
             client->decreaseReferenceCount();
@@ -337,7 +350,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
 
         for (const auto &item : m_client_list)
         {
-            item->showInfo(std::cout);
+            if (item)
+                item->showInfo(std::cout);
         }
     }
 
@@ -518,7 +532,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
             m_client_list.push_back(nullptr);
         }
 
-        m_client_list[id] = std::make_unique<Client>(id, port, ipAddress, sock);
+        m_client_list[id] = std::make_unique<Client>(id, port, ipAddress, m_client_buffer_len, sock);
 
         m_client_list[id]->increaseReferenceCount();
         return m_client_list[id].get();
@@ -832,10 +846,10 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         }
     }
 
-    void postSendEvent(Client &client, const std::string &message)
+    void postSendEvent(Client &client, std::vector<char> &data)
     {
 
-        if (message.size() > m_client_buffer_len)
+        if (data.size() > m_client_buffer_len)
         {
             LoggerManager::get_logger()->write(SEVERITY::INFO,
                                                "Cound not send post send event: Message is larger than max lenght.");
@@ -843,15 +857,13 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         }
         else
         {
-            strcpy_s(client.m_send_buffer, m_client_buffer_len, message.c_str());
-            client.m_send_len = message.size();
 
             DWORD bytesSent = 0;
             DWORD flags = 0;
 
             WSABUF wsa_buf;
-            wsa_buf.buf = client.m_send_buffer;
-            wsa_buf.len = static_cast<ULONG>(client.m_send_len);
+            wsa_buf.buf = data.data();
+            wsa_buf.len = static_cast<ULONG>(data.size());
 
             OVERLAPPED *send_overlapped = client.getSendOverlapped();
             ZeroMemory(send_overlapped, sizeof(*send_overlapped));

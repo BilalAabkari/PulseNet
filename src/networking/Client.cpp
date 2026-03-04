@@ -1,10 +1,16 @@
 #include "Client.h"
 namespace pulse::net
 {
-Client::Client(uint64_t id, int port, std::string ipAddress, SOCKET_TYPE sock)
+Client::Client(uint64_t id, int port, std::string ipAddress, int max_buffer_len, SOCKET_TYPE sock)
     : m_id(id), m_port(port), m_ipAddress(ipAddress), m_sock(sock), m_recv_len(0), m_send_len(0),
-      m_last_bytes_received(0), m_is_disconnecting(false), m_is_sending(false)
+      m_last_bytes_received(0), m_is_disconnecting(false), m_is_sending(false), m_max_buffer_len(max_buffer_len)
 {
+    m_recv_buffer = new char[max_buffer_len];
+}
+
+Client::~Client()
+{
+    delete[] m_recv_buffer;
 }
 
 uint64_t Client::getId() const
@@ -29,12 +35,12 @@ int Client::getReferenceCount() const
 
 void Client::increaseReferenceCount()
 {
-    m_reference_count.fetch_add(1);
+    m_reference_count.fetch_add(1, std::memory_order_relaxed);
 };
 
 void Client::decreaseReferenceCount()
 {
-    m_reference_count.fetch_sub(1);
+    m_reference_count.fetch_sub(1, std::memory_order_acq_rel);
 };
 
 void Client::disconnect()

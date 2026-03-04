@@ -23,6 +23,7 @@ int main()
     /********** Initialize sockets ***********/
     auto assembler = std::make_unique<pulse::net::HttpAssembler>();
     pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "0.0.0.0", 2, std::move(assembler));
+    // server.setClientBufferLen(60);
 
     pulse::net::LoggerManager::setLevel(pulse::net::SEVERITY::TRACE);
 
@@ -62,6 +63,7 @@ int main()
         if ((isChunked && message->rawBody().size() == 0) || !isChunked)
         {
             server.send(request->client.id, RESPONSE);
+            // server.send(request->client.id, "");
         }
     });
 

@@ -11,11 +11,11 @@ class Server
     virtual void start() = 0;
     virtual void send(uint64_t id, const std::string &message) = 0;
 
-    void setClientBufferLen(int size)
+    void setClientBufferLen(size_t size)
     {
         m_client_buffer_len = size;
     }
 
   protected:
-    int m_client_buffer_len = 4096;
+    size_t m_client_buffer_len = 4096;
 };
