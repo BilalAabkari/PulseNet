@@ -23,9 +23,10 @@ int main()
     /********** Initialize sockets ***********/
     auto assembler = std::make_unique<pulse::net::HttpAssembler>();
     pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "0.0.0.0", 2, std::move(assembler));
+    server.setClientBufferLen(1024 * 1024 * 2);
     // server.setClientBufferLen(60);
 
-    pulse::net::LoggerManager::setLevel(pulse::net::SEVERITY::TRACE);
+    pulse::net::LoggerManager::setLevel(pulse::net::SEVERITY::WARN);
 
     try
     {

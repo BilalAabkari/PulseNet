@@ -72,7 +72,7 @@ bool HttpMessage::headerContainsValue(const std::string &header, const std::stri
     return Utils::containsToken(value, it->second);
 }
 
-std::string HttpMessage::rawBody()
+const std::string &HttpMessage::rawBody()
 {
     return m_body;
 }

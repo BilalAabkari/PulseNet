@@ -30,7 +30,7 @@ class HttpMessage : public JSONSerializable
 
     bool headerContainsValue(const std::string &header, const std::string &value) const;
 
-    std::string rawBody();
+    const std::string &rawBody();
 
     void addHeader(const std::string &name, const std::string &value);
 

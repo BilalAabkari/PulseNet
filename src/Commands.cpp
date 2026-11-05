@@ -5,4 +5,6 @@ void registerCommands(pulse::utils::Console &console,
 {
     console.registerCommand("connections",
                             [&](const std::vector<std::string> &args) { network_manager.showClients(std::cout); });
+    console.registerCommand("queues-status",
+                            [&](const std::vector<std::string> &args) { network_manager.showQueueStatus(std::cout); });
 }

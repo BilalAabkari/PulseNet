@@ -37,6 +37,11 @@ template <typename T> class ThreadSafeQueue
         return r;
     }
 
+    size_t size() const
+    {
+        return m_queue.size();
+    }
+
   private:
     std::queue<std::unique_ptr<T>> m_queue;
     std::mutex m_mtx;
