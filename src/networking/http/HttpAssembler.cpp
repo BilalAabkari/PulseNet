@@ -499,7 +499,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             {
                 if (m_assemble_chunked_requests)
                 {
-                    // This feature should probabily be removed
+                    // This feature should probabily not be implemented
                 }
                 else
                 {
@@ -757,6 +757,16 @@ void HttpAssembler::resetState(HttpStreamState &state) const
     state.body.clear();
 
     state.pos = 0;
+}
+
+void HttpAssembler::terminate(uint64_t id)
+{
+
+    std::unique_lock lock(m_mtx);
+
+    m_client_states.erase(id);
+
+    lock.unlock();
 }
 
 HttpMethod HttpAssembler::parseMethod(std::string_view part) const

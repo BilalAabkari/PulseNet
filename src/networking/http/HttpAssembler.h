@@ -19,6 +19,8 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
     virtual AssemblingResult feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
                                   int last_tcp_packet_len);
 
+    virtual void terminate(uint64_t id);
+
     void setMaxRequestLineLength(int length);
     void setMaxRequestHeaderBytes(int length);
     void setMaxBodySize(int length);

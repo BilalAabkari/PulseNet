@@ -1,5 +1,6 @@
 file(GLOB NETWORKING_SOURCES "*.cpp" "*.h")
 file(GLOB HTTP_SOURCES "http/*.cpp")
+file(GLOB TLS_SOURCES "tls/*.cpp")
 
 set(PLATFORM_SPECIFIC_NETWORKINGS)
 
@@ -22,9 +23,9 @@ endif()
 
 
 
-add_library(networking STATIC ${PLATFORM_SPECIFIC_NETWORKINGS} ${NETWORKING_SOURCES} ${HTTP_SOURCES})
+add_library(networking STATIC ${PLATFORM_SPECIFIC_NETWORKINGS} ${NETWORKING_SOURCES} ${HTTP_SOURCES} ${TLS_SOURCES})
 
 if(WIN32)
-    target_link_libraries(networking PRIVATE Ws2_32 Mswsock )
+    target_link_libraries(networking PRIVATE Ws2_32 Mswsock OpenSSL::SSL)
 endif()
 
