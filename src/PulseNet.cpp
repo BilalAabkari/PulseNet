@@ -4,13 +4,11 @@
 #include "networking/TCPServer.h"
 #include "networking/ThreadPool.h"
 #include "networking/http/HttpAssembler.h"
+#include "networking/tls/TLSAssembler.h"
 #include "utils/ConfigParser.h"
 #include "utils/Console.h"
 #include "utils/Logger.h"
-#include <codecvt>
 #include <iostream>
-#include <locale>
-#include <thread>
 
 int main()
 {
@@ -20,9 +18,15 @@ int main()
     ConfigParser parser;
     parser.read();
 
+    ConfigParser::ssl_config config = parser.getSSLConfig();
+
     /********** Initialize sockets ***********/
     auto assembler = std::make_unique<pulse::net::HttpAssembler>();
-    pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "0.0.0.0", 2, std::move(assembler));
+    auto tlsAssembler = std::make_unique<pulse::net::TLSAssembler>(config.ssl_certificate, config.ssl_certificate_key);
+
+    pulse::net::TCPServer<pulse::net::TLSAssembler> server(80, "0.0.0.0", 2, std::move(tlsAssembler));
+    // pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "0.0.0.0", 2, std::move(assembler));
+
     server.setClientBufferLen(1024 * 1024 * 2);
     // server.setClientBufferLen(60);
 
@@ -48,7 +52,7 @@ int main()
     pulse::net::ThreadPool test(4, [&server](int id) {
         auto request = server.next();
 
-        std::shared_ptr<pulse::net::HttpMessage> message = request->message;
+        // std::shared_ptr<pulse::net::HttpMessage> message = request->message;
 
         // std::cout << request->message->rawBody() << '\n';
         // std::cout << "**************************************************************\n";
@@ -59,13 +63,13 @@ int main()
                                             "\r\n"
                                             "{\n\"message\" : \"Message received!\"\n}";
 
-        bool isChunked = message->headerContainsValue("transfer-encoding", "chunked");
+        // bool isChunked = message->headerContainsValue("transfer-encoding", "chunked");
 
-        if ((isChunked && message->rawBody().size() == 0) || !isChunked)
-        {
-            server.send(request->client.id, RESPONSE);
-            // server.send(request->client.id, "");
-        }
+        // if ((isChunked && message->rawBody().size() == 0) || !isChunked)
+        //{
+        //     server.send(request->client.id, RESPONSE);
+        //     // server.send(request->client.id, "");
+        // }
     });
 
     test.run();

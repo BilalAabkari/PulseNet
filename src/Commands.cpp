@@ -8,3 +8,12 @@ void registerCommands(pulse::utils::Console &console,
     console.registerCommand("queues-status",
                             [&](const std::vector<std::string> &args) { network_manager.showQueueStatus(std::cout); });
 }
+
+void registerCommands(pulse::utils::Console &console,
+                      const pulse::net::TCPServer<pulse::net::TLSAssembler> &network_manager)
+{
+    console.registerCommand("connections",
+                            [&](const std::vector<std::string> &args) { network_manager.showClients(std::cout); });
+    console.registerCommand("queues-status",
+                            [&](const std::vector<std::string> &args) { network_manager.showQueueStatus(std::cout); });
+}

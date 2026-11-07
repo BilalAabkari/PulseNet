@@ -478,6 +478,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
     void terminateClient(uint64_t id)
     {
         std::lock_guard lock(m_mtx);
+        if (m_client_list[id]->getReferenceCount() != 0)
+            return;
 
         if (id < m_client_list.size() && m_client_list[id] != nullptr)
         {
@@ -646,7 +648,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         DWORD flags = 0;
         DWORD bytes_received = 0;
         WSABUF wsa_buf;
-        wsa_buf.buf = client.m_recv_buffer + client.m_recv_len;
+        wsa_buf.buf = reinterpret_cast<char *>(client.m_recv_buffer + client.m_recv_len);
         wsa_buf.len = m_client_buffer_len - client.m_recv_len;
 
         OVERLAPPED *read_overlapped = client.getReadOverlapped();

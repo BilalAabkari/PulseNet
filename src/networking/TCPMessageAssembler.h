@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LoggerManager.h"
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -22,7 +23,7 @@ template <typename T> class TCPMessageAssembler
 
     ~TCPMessageAssembler() {};
 
-    virtual AssemblingResult feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
+    virtual AssemblingResult feed(uint64_t id, uint8_t *buffer, int &buffer_len, int max_buffer_len,
                                   int last_tcp_packet_len) = 0;
 
     virtual void terminate(uint64_t id) = 0;

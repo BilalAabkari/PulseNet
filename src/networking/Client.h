@@ -1,6 +1,7 @@
 #pragma once
 #include "NetworkPlatform.h"
 #include "constants.h"
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -177,7 +178,7 @@ class Client
      * @note Buffer contents are only valid up to m_recv_len bytes.
      * @warning Not null-terminated by default; treat as binary data.
      */
-    char *m_recv_buffer;
+    uint8_t *m_recv_buffer;
 
     int m_max_buffer_len;
 

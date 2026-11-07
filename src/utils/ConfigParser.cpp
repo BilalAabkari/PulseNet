@@ -44,6 +44,24 @@ void ConfigParser::read()
     }
 }
 
+ConfigParser::ssl_config ConfigParser::getSSLConfig() const
+{
+    ssl_config conf;
+
+    if (m_config.contains("SSL_CERTIFICATE"))
+    {
+        conf.ssl_certificate = m_config.at("SSL_CERTIFICATE");
+    }
+
+    if (m_config.contains("SSL_CERTIFICATE_KEY"))
+    {
+
+        conf.ssl_certificate_key = m_config.at("SSL_CERTIFICATE_KEY");
+    }
+
+    return conf;
+}
+
 std::string ConfigParser::getConfigFilePath() const
 {
 #ifdef _WIN32
@@ -77,14 +95,13 @@ void ConfigParser::createConfigFileIfNotExists(const std::string &configPath)
             newConfigFile << "\n";
             newConfigFile << "*******************************************************"
                              "****************\n";
-            newConfigFile << "*                           DATABASE CONFIG            "
+            newConfigFile << "*                           SSL CONFIG            "
                              "               *\n";
             newConfigFile << "*******************************************************"
                              "****************\n ";
             newConfigFile << "\n";
-            newConfigFile << "DATABASE_HOST=localhost\n";
-            newConfigFile << "DATABASE_PORT=5432\n";
-            newConfigFile << "DATABASE_PASSWORD=root\n";
+            newConfigFile << "SSL_CERTIFICATE=\n";
+            newConfigFile << "SSL_CERTIFICATE_KEY=\n";
             newConfigFile << "\n";
             newConfigFile << "\n";
             newConfigFile.close();

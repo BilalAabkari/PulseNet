@@ -16,6 +16,16 @@ class ConfigParser
 {
   public:
     /* ----------------
+     * public structs
+     * ----------------
+     */
+    struct ssl_config
+    {
+        std::string ssl_certificate;
+        std::string ssl_certificate_key;
+    };
+
+    /* ----------------
      * Constructors
      * ----------------
      */
@@ -26,21 +36,11 @@ class ConfigParser
      * ----------------
      */
 
-    /**
-     * @brief This method reads the configuration file config.conf located in
-     *		the application directory
-     */
     void read();
 
-    /**
-     * @brief This method returns the config params related to database.
-     * @return DatabaseKeys struct containing DB hostname, port and password.
-     */
-
-    /**
-     * @return Config file location
-     */
     std::string getConfigFilePath() const;
+
+    ssl_config getSSLConfig() const;
 
     /* ----------------
      * Overloaded operators

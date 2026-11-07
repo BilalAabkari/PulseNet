@@ -5,7 +5,7 @@ Client::Client(uint64_t id, int port, std::string ipAddress, int max_buffer_len,
     : m_id(id), m_port(port), m_ipAddress(ipAddress), m_sock(sock), m_recv_len(0), m_send_len(0),
       m_last_bytes_received(0), m_is_disconnecting(false), m_is_sending(false), m_max_buffer_len(max_buffer_len)
 {
-    m_recv_buffer = new char[max_buffer_len];
+    m_recv_buffer = new uint8_t[max_buffer_len];
 }
 
 Client::~Client()

@@ -12,7 +12,7 @@ HttpAssembler::HttpAssembler(bool assemble_chunked_requests) : m_assemble_chunke
 {
 }
 
-HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
+HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, uint8_t *buffer, int &buffer_len, int max_buffer_len,
                                                     int last_tcp_packet_len)
 {
 
@@ -57,7 +57,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
         case HttpState::STATE_PARSE_RESPONSE_OR_REQUEST:
             if (c == ' ' && client_state.i_end - client_state.i_start > 0)
             {
-                std::string_view part(buffer + client_state.i_start, client_state.i_end - client_state.i_start);
+                std::string_view part(reinterpret_cast<const char *>(buffer) + client_state.i_start,
+                                      client_state.i_end - client_state.i_start);
                 if (part == "HTTP/1.0")
                 {
                     client_state.http_version = HttpVersion::HTTP_1_0;
@@ -98,7 +99,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
-            else if (static_cast<unsigned char>(c) <= 127)
+            else if (c <= 127)
             {
                 client_state.i_end++;
             }
@@ -131,7 +132,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
-            else if (isdigit(static_cast<unsigned char>(c)))
+            else if (isdigit(c))
             {
                 client_state.i_end++;
             }
@@ -156,7 +157,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
-            else if (static_cast<unsigned char>(c) <= 127)
+            else if (c <= 127)
             {
                 client_state.i_end++;
             }
@@ -172,7 +173,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             }
             else if (c == ' ')
             {
-                client_state.uri.assign(buffer + client_state.i_start, client_state.i_end - client_state.i_start);
+                client_state.uri.assign(reinterpret_cast<const char *>(buffer) + client_state.i_start,
+                                        client_state.i_end - client_state.i_start);
                 client_state.i_start = i + 1;
                 client_state.i_end = i + 1;
                 client_state.state = HttpState::STATE_PARSE_REQUEST_HTTP_VERSION;
@@ -183,7 +185,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
-            else if (static_cast<unsigned char>(c) <= 127)
+            else if (c <= 127)
             {
                 client_state.i_end++;
             }
@@ -195,7 +197,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
         case HttpState::STATE_PARSE_REQUEST_HTTP_VERSION:
             if (client_state.i_end - client_state.i_start > 1 && c == '\n' && buffer[client_state.i_end - 1] == '\r')
             {
-                std::string_view part(buffer + client_state.i_start, client_state.i_end - 1 - client_state.i_start);
+                std::string_view part(reinterpret_cast<const char *>(buffer) + client_state.i_start,
+                                      client_state.i_end - 1 - client_state.i_start);
                 if (part == "HTTP/1.0")
                 {
                     client_state.http_version = HttpVersion::HTTP_1_0;
@@ -225,7 +228,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     "Rejected http request of connection " + std::to_string(id) + ": Invalid first line. Too long");
                 client_state.state = HttpState::STATE_ERROR;
             }
-            else if (static_cast<unsigned char>(c) <= 127)
+            else if (c <= 127)
             {
                 client_state.i_end++;
             }
@@ -335,7 +338,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                                         "headers exceded");
                 client_state.state = HttpState::STATE_ERROR;
             }
-            else if (static_cast<unsigned char>(c) <= 127)
+            else if (c <= 127)
             {
                 client_state.i_end++;
             }
@@ -355,10 +358,10 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                 while (*(buffer + client_state.i_end) == ' ' && client_state.i_start < client_state.i_end)
                     client_state.i_end--;
 
-                std::string_view header_name(buffer + client_state.header_name_start,
+                std::string_view header_name(reinterpret_cast<const char *>(buffer) + client_state.header_name_start,
                                              client_state.header_name_end - client_state.header_name_start);
 
-                std::string_view header_value(buffer + client_state.i_start,
+                std::string_view header_value(reinterpret_cast<const char *>(buffer) + client_state.i_start,
                                               client_state.i_end - 1 - client_state.i_start);
 
                 if (header_value.size() == 0)
@@ -382,7 +385,7 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                                         "headers exceded");
                 client_state.state = HttpState::STATE_ERROR;
             }
-            else if (static_cast<unsigned char>(c) <= 127)
+            else if (c <= 127)
             {
                 client_state.i_end++;
             }
@@ -409,7 +412,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                 if (client_state.body.empty())
                 {
 
-                    std::string body(buffer + client_state.i_start, client_state.body_lenght);
+                    std::string body(reinterpret_cast<const char *>(buffer) + client_state.i_start,
+                                     client_state.body_lenght);
 
                     result.messages.push_back(std::make_shared<HttpMessage>(
                         client_state.http_version, client_state.method, std::move(client_state.uri),
@@ -417,7 +421,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                 }
                 else
                 {
-                    client_state.body.append(buffer + client_state.i_start, client_state.pos + 1);
+                    client_state.body.append(reinterpret_cast<const char *>(buffer) + client_state.i_start,
+                                             client_state.pos + 1);
 
                     result.messages.push_back(std::make_shared<HttpMessage>(
                         client_state.http_version, client_state.method, std::move(client_state.uri),
@@ -445,7 +450,9 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
             {
                 int length = 0;
 
-                if (Utils::parseHexadecimal(std::string_view(buffer + client_state.i_start, size - 1), length))
+                if (Utils::parseHexadecimal(
+                        std::string_view(reinterpret_cast<const char *>(buffer) + client_state.i_start, size - 1),
+                        length))
                 {
                     if (length > m_max_body_memory_buffer)
                     {
@@ -506,7 +513,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     if (client_state.body.empty())
                     {
 
-                        std::string body(buffer + client_state.i_start, client_state.current_chunk_length);
+                        std::string body(reinterpret_cast<const char *>(buffer) + client_state.i_start,
+                                         client_state.current_chunk_length);
 
                         result.messages.push_back(std::make_shared<HttpMessage>(
                             client_state.http_version, client_state.method, client_state.uri,
@@ -514,7 +522,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                     }
                     else
                     {
-                        client_state.body.append(buffer + client_state.i_start, client_state.pos + 1);
+                        client_state.body.append(reinterpret_cast<const char *>(buffer) + client_state.i_start,
+                                                 client_state.pos + 1);
 
                         result.messages.push_back(std::make_shared<HttpMessage>(
                             client_state.http_version, client_state.method, client_state.uri,
@@ -630,7 +639,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                 client_state.body.reserve(client_state.body_lenght + 1);
             }
 
-            client_state.body.append(buffer + client_state.i_start, client_state.pos - client_state.i_start);
+            client_state.body.append(reinterpret_cast<const char *>(buffer) + client_state.i_start,
+                                     client_state.pos - client_state.i_start);
             buffer_len = 0;
             client_state.i_start = 0;
             client_state.i_end = 0;
@@ -643,7 +653,8 @@ HttpAssembler::AssemblingResult HttpAssembler::feed(uint64_t id, char *buffer, i
                 client_state.body.reserve(client_state.current_chunk_length + 1);
             }
 
-            client_state.body.append(buffer + client_state.i_start, client_state.pos - client_state.i_start);
+            client_state.body.append(reinterpret_cast<const char *>(buffer) + client_state.i_start,
+                                     client_state.pos - client_state.i_start);
             buffer_len = 0;
             client_state.i_start = 0;
             client_state.i_end = 0;

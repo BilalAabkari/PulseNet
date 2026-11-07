@@ -16,10 +16,10 @@ class HttpAssembler : public TCPMessageAssembler<HttpMessage>
   public:
     HttpAssembler(bool assemble_chunked_requests = false);
 
-    virtual AssemblingResult feed(uint64_t id, char *buffer, int &buffer_len, int max_buffer_len,
-                                  int last_tcp_packet_len);
+    virtual AssemblingResult feed(uint64_t id, uint8_t *buffer, int &buffer_len, int max_buffer_len,
+                                  int last_tcp_packet_len) override;
 
-    virtual void terminate(uint64_t id);
+    virtual void terminate(uint64_t id) override;
 
     void setMaxRequestLineLength(int length);
     void setMaxRequestHeaderBytes(int length);
