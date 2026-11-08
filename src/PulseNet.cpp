@@ -24,13 +24,13 @@ int main()
     auto assembler = std::make_unique<pulse::net::HttpAssembler>();
     auto tlsAssembler = std::make_unique<pulse::net::TLSAssembler>(config.ssl_certificate, config.ssl_certificate_key);
 
-    pulse::net::TCPServer<pulse::net::TLSAssembler> server(80, "0.0.0.0", 2, std::move(tlsAssembler));
+    pulse::net::TCPServer<pulse::net::TLSAssembler> server(443, "0.0.0.0", 2, std::move(tlsAssembler));
     // pulse::net::TCPServer<pulse::net::HttpAssembler> server(80, "0.0.0.0", 2, std::move(assembler));
 
     server.setClientBufferLen(1024 * 1024 * 2);
     // server.setClientBufferLen(60);
 
-    pulse::net::LoggerManager::setLevel(pulse::net::SEVERITY::WARN);
+    pulse::net::LoggerManager::setLevel(pulse::net::SEVERITY::TRACE);
 
     try
     {

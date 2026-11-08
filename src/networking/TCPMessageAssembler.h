@@ -19,6 +19,9 @@ template <typename T> class TCPMessageAssembler
         std::vector<std::shared_ptr<MessageType>> messages;
         bool error = false;
         std::string error_message;
+
+        std::string to_write;
+        bool wants_to_write = false;
     };
 
     ~TCPMessageAssembler() {};

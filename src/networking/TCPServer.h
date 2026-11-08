@@ -481,6 +481,8 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         if (m_client_list[id]->getReferenceCount() != 0)
             return;
 
+        m_assembler->terminate(id);
+
         if (id < m_client_list.size() && m_client_list[id] != nullptr)
         {
             closesocket(m_client_list[id]->getSocket());
@@ -530,6 +532,12 @@ template <ValidAssembler Assembler> class TCPServer : public Server
                     {
                         std::unique_ptr<Request> r = createRequest(*client, message);
                         m_requests_queue.push(std::move(r));
+                    }
+
+                    // We send if necessary:
+                    if (result.wants_to_write)
+                    {
+                        send(client->getId(), result.to_write);
                     }
 
                     // Then we post the next receive:
@@ -649,7 +657,7 @@ template <ValidAssembler Assembler> class TCPServer : public Server
         DWORD bytes_received = 0;
         WSABUF wsa_buf;
         wsa_buf.buf = reinterpret_cast<char *>(client.m_recv_buffer + client.m_recv_len);
-        wsa_buf.len = m_client_buffer_len - client.m_recv_len;
+        wsa_buf.len = std::min((size_t)(m_client_buffer_len - client.m_recv_len), (size_t)20);
 
         OVERLAPPED *read_overlapped = client.getReadOverlapped();
         ZeroMemory(read_overlapped, sizeof(*read_overlapped));

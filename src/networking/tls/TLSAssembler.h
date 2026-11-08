@@ -4,6 +4,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <shared_mutex>
+#include <source_location>
 #include <unordered_map>
 
 namespace pulse::net
@@ -21,19 +22,26 @@ class TLSAssembler : public TCPMessageAssembler<TLSMessage>
     virtual void terminate(uint64_t id) override;
 
   private:
-    void throwSSLError(const std::string &message_prefix) const;
-
     struct ClientTLSState
     {
 
-        ClientTLSState(int max_length) : length(0), decrypted_buffer(new uint8_t[max_length]) {};
+        ClientTLSState(int max_length)
+            : length(0), decrypted_buffer(new uint8_t[max_length]), ssl(nullptr), pos(0), pending_accept(true) {};
 
         ClientTLSState(const ClientTLSState &) = delete;
         ClientTLSState operator=(const ClientTLSState &) = delete;
 
         int length;
         std::unique_ptr<uint8_t[]> decrypted_buffer;
+        int pos;
+        SSL *ssl;
+        bool pending_accept;
     };
+
+    void throwSSLError(const std::string &message_prefix) const;
+    void SSLProtocolError(AssemblingResult &result, const std::string &error_message, uint64_t client_id,
+                          int error_code, std::source_location loc) const;
+    void flushContentsToClient(AssemblingResult &result, ClientTLSState &client_state, bool is_error);
 
     unsigned int m_buffer_max_len = 16 * 1024;
 

@@ -12,15 +12,15 @@ TEST(HttpParserTest, SuccessCompleteMessage)
 
     for (int i = 0; i < 3; i++)
     {
-        char buffer[] = "GET /aaa HTTP/1.1\r\n"
-                        "content-length: 26\r\n"
-                        "content-type: application/json\r\n"
-                        "user-agent: PostmanRuntime/7.51.1\r\n"
-                        "connection:keep-alive\r\n"
-                        "accept-encoding : gzip, deflate, br\r\n"
-                        "accept : */*\r\n"
-                        "host: 127.0.0.1\r\n\r\n"
-                        "{\r\n    \"text\" : \"hello\"\r\n}";
+        uint8_t buffer[] = "GET /aaa HTTP/1.1\r\n"
+                           "content-length: 26\r\n"
+                           "content-type: application/json\r\n"
+                           "user-agent: PostmanRuntime/7.51.1\r\n"
+                           "connection:keep-alive\r\n"
+                           "accept-encoding : gzip, deflate, br\r\n"
+                           "accept : */*\r\n"
+                           "host: 127.0.0.1\r\n\r\n"
+                           "{\r\n    \"text\" : \"hello\"\r\n}";
 
         int length = sizeof(buffer) - 1;
 
@@ -38,13 +38,13 @@ TEST(HttpParserTest, SuccessCompleteMessageNoBody)
 
     for (int i = 0; i < 3; i++)
     {
-        char buffer[] = "GET /aaa HTTP/1.1\r\n"
-                        "content-type: application/json\r\n"
-                        "user-agent: PostmanRuntime/7.51.1\r\n"
-                        "connection:keep-alive\r\n"
-                        "accept-encoding : gzip, deflate, br\r\n"
-                        "accept : */*\r\n"
-                        "host: 127.0.0.1\r\n\r\n";
+        uint8_t buffer[] = "GET /aaa HTTP/1.1\r\n"
+                           "content-type: application/json\r\n"
+                           "user-agent: PostmanRuntime/7.51.1\r\n"
+                           "connection:keep-alive\r\n"
+                           "accept-encoding : gzip, deflate, br\r\n"
+                           "accept : */*\r\n"
+                           "host: 127.0.0.1\r\n\r\n";
 
         int length = sizeof(buffer) - 1;
 
@@ -60,7 +60,7 @@ TEST(HttpParserTest, SuccessAfterError)
 {
     pulse::net::HttpAssembler assembler;
 
-    char invalid_request[] = "??? /uri";
+    uint8_t invalid_request[] = "??? /uri";
     int length = sizeof(invalid_request) - 1;
 
     pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, invalid_request, length, 8096, length);
@@ -68,15 +68,15 @@ TEST(HttpParserTest, SuccessAfterError)
     EXPECT_TRUE(result.error);
     EXPECT_EQ(length, 0); // Everything thrown and reset
 
-    char valid_request[] = "GET /aaa HTTP/1.1\r\n"
-                           "content-length: 26\r\n"
-                           "content-type: application/json\r\n"
-                           "user-agent: PostmanRuntime/7.51.1\r\n"
-                           "connection:keep-alive\r\n"
-                           "accept-encoding : gzip, deflate, br\r\n"
-                           "accept : */*\r\n"
-                           "host: 127.0.0.1\r\n\r\n"
-                           "{\r\n    \"text\" : \"hello\"\r\n}";
+    uint8_t valid_request[] = "GET /aaa HTTP/1.1\r\n"
+                              "content-length: 26\r\n"
+                              "content-type: application/json\r\n"
+                              "user-agent: PostmanRuntime/7.51.1\r\n"
+                              "connection:keep-alive\r\n"
+                              "accept-encoding : gzip, deflate, br\r\n"
+                              "accept : */*\r\n"
+                              "host: 127.0.0.1\r\n\r\n"
+                              "{\r\n    \"text\" : \"hello\"\r\n}";
 
     length = sizeof(valid_request) - 1;
 
@@ -91,25 +91,25 @@ TEST(HttpParserTest, ConsecutiveHttpRequestsAtOnce)
 {
     pulse::net::HttpAssembler assembler;
 
-    char consecutive_requests[] = "GET /aaa HTTP/1.1\r\n"
-                                  "content-length: 26\r\n"
-                                  "content-type: application/json\r\n"
-                                  "user-agent: PostmanRuntime/7.51.1\r\n"
-                                  "connection:keep-alive\r\n"
-                                  "accept-encoding : gzip, deflate, br\r\n"
-                                  "accept : */*\r\n"
-                                  "host: 127.0.0.1\r\n\r\n"
-                                  "{\r\n    \"text\" : \"hello\"\r\n}"
+    uint8_t consecutive_requests[] = "GET /aaa HTTP/1.1\r\n"
+                                     "content-length: 26\r\n"
+                                     "content-type: application/json\r\n"
+                                     "user-agent: PostmanRuntime/7.51.1\r\n"
+                                     "connection:keep-alive\r\n"
+                                     "accept-encoding : gzip, deflate, br\r\n"
+                                     "accept : */*\r\n"
+                                     "host: 127.0.0.1\r\n\r\n"
+                                     "{\r\n    \"text\" : \"hello\"\r\n}"
 
-                                  "GET /aaa HTTP/1.1\r\n"
-                                  "content-length: 26\r\n"
-                                  "content-type: application/json\r\n"
-                                  "user-agent: PostmanRuntime/7.51.1\r\n"
-                                  "connection:keep-alive\r\n"
-                                  "accept-encoding : gzip, deflate, br\r\n"
-                                  "accept : */*\r\n"
-                                  "host: 127.0.0.1\r\n\r\n"
-                                  "{\r\n    \"text\" : \"hello\"\r\n}";
+                                     "GET /aaa HTTP/1.1\r\n"
+                                     "content-length: 26\r\n"
+                                     "content-type: application/json\r\n"
+                                     "user-agent: PostmanRuntime/7.51.1\r\n"
+                                     "connection:keep-alive\r\n"
+                                     "accept-encoding : gzip, deflate, br\r\n"
+                                     "accept : */*\r\n"
+                                     "host: 127.0.0.1\r\n\r\n"
+                                     "{\r\n    \"text\" : \"hello\"\r\n}";
 
     int length = sizeof(consecutive_requests) - 1;
 
@@ -124,15 +124,15 @@ TEST(HttpParserTest, SuccessStreamedMessage)
 {
     pulse::net::HttpAssembler assembler;
 
-    char buffer[] = "POST /aaa HTTP/1.1\r\n"
-                    "content-length: 26\r\n"
-                    "content-type: application/json\r\n"
-                    "user-agent: PostmanRuntime/7.51.1\r\n"
-                    "connection:keep-alive\r\n"
-                    "accept-encoding : gzip, deflate, br\r\n"
-                    "accept : */*\r\n"
-                    "host: 127.0.0.1\r\n\r\n"
-                    "{\r\n    \"text\" : \"hello\"\r\n}";
+    uint8_t buffer[] = "POST /aaa HTTP/1.1\r\n"
+                       "content-length: 26\r\n"
+                       "content-type: application/json\r\n"
+                       "user-agent: PostmanRuntime/7.51.1\r\n"
+                       "connection:keep-alive\r\n"
+                       "accept-encoding : gzip, deflate, br\r\n"
+                       "accept : */*\r\n"
+                       "host: 127.0.0.1\r\n\r\n"
+                       "{\r\n    \"text\" : \"hello\"\r\n}";
 
     int length = sizeof(buffer) - 1;
 
@@ -164,20 +164,20 @@ TEST(HttpParserTest, SuccessCompleteChunkedMessage)
 
     for (int i = 0; i < 3; i++)
     {
-        char chunked_request[] = "POST /upload HTTP/1.1\r\n"
-                                 "Host: example.com\r\n"
-                                 "Transfer-Encoding: chunked\r\n"
-                                 "Content-Type: text/plain\r\n"
-                                 "Connection: keep-alive\r\n"
-                                 "\r\n"
-                                 "7\r\n"
-                                 "Mozilla\r\n"
-                                 "9\r\n"
-                                 "Developer\r\n"
-                                 "1a\r\n"
-                                 "Network and Communications\r\n"
-                                 "0\r\n"
-                                 "\r\n";
+        uint8_t chunked_request[] = "POST /upload HTTP/1.1\r\n"
+                                    "Host: example.com\r\n"
+                                    "Transfer-Encoding: chunked\r\n"
+                                    "Content-Type: text/plain\r\n"
+                                    "Connection: keep-alive\r\n"
+                                    "\r\n"
+                                    "7\r\n"
+                                    "Mozilla\r\n"
+                                    "9\r\n"
+                                    "Developer\r\n"
+                                    "1a\r\n"
+                                    "Network and Communications\r\n"
+                                    "0\r\n"
+                                    "\r\n";
 
         int length = sizeof(chunked_request) - 1;
 
@@ -193,29 +193,29 @@ TEST(HttpParserTest, SuccessFiniteMessageAfterChunkedMessage)
 {
     pulse::net::HttpAssembler assembler;
 
-    char request[] = "POST /aaa HTTP/1.1\r\n"
-                     "content-length: 26\r\n"
-                     "content-type: application/json\r\n"
-                     "user-agent: PostmanRuntime/7.51.1\r\n"
-                     "connection:keep-alive\r\n"
-                     "accept-encoding : gzip, deflate, br\r\n"
-                     "accept : */*\r\n"
-                     "host: 127.0.0.1\r\n\r\n"
-                     "{\r\n    \"text\" : \"hello\"\r\n}"
-                     "POST /upload HTTP/1.1\r\n"
-                     "Host: example.com\r\n"
-                     "Transfer-Encoding: chunked\r\n"
-                     "Content-Type: text/plain\r\n"
-                     "Connection: keep-alive\r\n"
-                     "\r\n"
-                     "7\r\n"
-                     "Mozilla\r\n"
-                     "9\r\n"
-                     "Developer\r\n"
-                     "1a\r\n"
-                     "Network and Communications\r\n"
-                     "0\r\n"
-                     "\r\n";
+    uint8_t request[] = "POST /aaa HTTP/1.1\r\n"
+                        "content-length: 26\r\n"
+                        "content-type: application/json\r\n"
+                        "user-agent: PostmanRuntime/7.51.1\r\n"
+                        "connection:keep-alive\r\n"
+                        "accept-encoding : gzip, deflate, br\r\n"
+                        "accept : */*\r\n"
+                        "host: 127.0.0.1\r\n\r\n"
+                        "{\r\n    \"text\" : \"hello\"\r\n}"
+                        "POST /upload HTTP/1.1\r\n"
+                        "Host: example.com\r\n"
+                        "Transfer-Encoding: chunked\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Connection: keep-alive\r\n"
+                        "\r\n"
+                        "7\r\n"
+                        "Mozilla\r\n"
+                        "9\r\n"
+                        "Developer\r\n"
+                        "1a\r\n"
+                        "Network and Communications\r\n"
+                        "0\r\n"
+                        "\r\n";
 
     int length = sizeof(request) - 1;
 
@@ -232,29 +232,29 @@ TEST(HttpParserTest, SuccessChunkedMessageAfterFiniteMessage)
 {
     pulse::net::HttpAssembler assembler;
 
-    char request[] = "POST /upload HTTP/1.1\r\n"
-                     "Host: example.com\r\n"
-                     "Transfer-Encoding: chunked\r\n"
-                     "Content-Type: text/plain\r\n"
-                     "Connection: keep-alive\r\n"
-                     "\r\n"
-                     "7\r\n"
-                     "Mozilla\r\n"
-                     "9\r\n"
-                     "Developer\r\n"
-                     "1a\r\n"
-                     "Network and Communications\r\n"
-                     "0\r\n"
-                     "\r\n"
-                     "POST /aaa HTTP/1.1\r\n"
-                     "content-length: 26\r\n"
-                     "content-type: application/json\r\n"
-                     "user-agent: PostmanRuntime/7.51.1\r\n"
-                     "connection:keep-alive\r\n"
-                     "accept-encoding : gzip, deflate, br\r\n"
-                     "accept : */*\r\n"
-                     "host: 127.0.0.1\r\n\r\n"
-                     "{\r\n    \"text\" : \"hello\"\r\n}";
+    uint8_t request[] = "POST /upload HTTP/1.1\r\n"
+                        "Host: example.com\r\n"
+                        "Transfer-Encoding: chunked\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Connection: keep-alive\r\n"
+                        "\r\n"
+                        "7\r\n"
+                        "Mozilla\r\n"
+                        "9\r\n"
+                        "Developer\r\n"
+                        "1a\r\n"
+                        "Network and Communications\r\n"
+                        "0\r\n"
+                        "\r\n"
+                        "POST /aaa HTTP/1.1\r\n"
+                        "content-length: 26\r\n"
+                        "content-type: application/json\r\n"
+                        "user-agent: PostmanRuntime/7.51.1\r\n"
+                        "connection:keep-alive\r\n"
+                        "accept-encoding : gzip, deflate, br\r\n"
+                        "accept : */*\r\n"
+                        "host: 127.0.0.1\r\n\r\n"
+                        "{\r\n    \"text\" : \"hello\"\r\n}";
 
     int length = sizeof(request) - 1;
 
@@ -272,21 +272,21 @@ TEST(HttpParserTest, SuccessStreamedMessageWithSmallBuffer)
     pulse::net::HttpAssembler assembler;
     assembler.setMaxBodyMemoryBuffer(32);
 
-    const char data[] = "POST /upload HTTP/1.1\r\n"
-                        "Host: example.com\r\n"
-                        "Content-Length: 228\r\n"
-                        "Content-Type: text/plain\r\n"
-                        "Connection: keep-alive\r\n"
-                        "\r\n"
-                        "This is a long body with more than thirty characters!!!!!"
-                        "This is a long body with more than thirty characters!!!!!"
-                        "This is a long body with more than thirty characters!!!!!"
-                        "This is a long body with more than thirty characters!!!!!";
+    const uint8_t data[] = "POST /upload HTTP/1.1\r\n"
+                           "Host: example.com\r\n"
+                           "Content-Length: 228\r\n"
+                           "Content-Type: text/plain\r\n"
+                           "Connection: keep-alive\r\n"
+                           "\r\n"
+                           "This is a long body with more than thirty characters!!!!!"
+                           "This is a long body with more than thirty characters!!!!!"
+                           "This is a long body with more than thirty characters!!!!!"
+                           "This is a long body with more than thirty characters!!!!!";
 
     const int dataLen = sizeof(data) - 1;
     const int maxBufLen = 32;
 
-    char buffer[maxBufLen];
+    uint8_t buffer[maxBufLen];
     int buffer_len = 0;
 
     int dataOffset = 0;
@@ -318,24 +318,24 @@ TEST(HttpParserTest, SuccessStreamedChunkedMessageWithSmallBuffer)
 {
     pulse::net::HttpAssembler assembler;
 
-    const char data[] = "POST /upload HTTP/1.1\r\n"
-                        "Host: example.com\r\n"
-                        "Transfer-Encoding: chunked\r\n"
-                        "Content-Type: text/plain\r\n"
-                        "\r\n"
-                        "24\r\n"
-                        "abcdefghijklmnopqrstuvwxyz1234567890\r\n"
-                        "1e\r\n"
-                        "The_quick_brown_fox_jumps_over\r\n"
-                        "1c\r\n"
-                        "Lorem_ipsum_dolor_sit_amet!!\r\n"
-                        "0\r\n"
-                        "\r\n";
+    const uint8_t data[] = "POST /upload HTTP/1.1\r\n"
+                           "Host: example.com\r\n"
+                           "Transfer-Encoding: chunked\r\n"
+                           "Content-Type: text/plain\r\n"
+                           "\r\n"
+                           "24\r\n"
+                           "abcdefghijklmnopqrstuvwxyz1234567890\r\n"
+                           "1e\r\n"
+                           "The_quick_brown_fox_jumps_over\r\n"
+                           "1c\r\n"
+                           "Lorem_ipsum_dolor_sit_amet!!\r\n"
+                           "0\r\n"
+                           "\r\n";
 
     const int dataLen = sizeof(data) - 1;
     const int maxBufLen = 32;
 
-    char buffer[maxBufLen];
+    uint8_t buffer[maxBufLen];
     int buffer_len = 0;
 
     int dataOffset = 0;
@@ -370,7 +370,7 @@ TEST(HttpParserTest, SuccessStreamedChunkedMessageWithSmallBuffer)
 TEST(HttpParserTest, InvalidMethod)
 {
     pulse::net::HttpAssembler assembler;
-    char buffer[] = "??? /uri";
+    uint8_t buffer[] = "??? /uri";
     int length = sizeof(buffer) - 1;
 
     pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, buffer, length, 8096, length);
@@ -381,21 +381,21 @@ TEST(HttpParserTest, InvalidMethod)
 TEST(HttpParserTest, EmptyHeaderFieldName)
 {
     pulse::net::HttpAssembler assembler;
-    char buffer1[] = "GET / HTTP/1.1\r\n: chunked\r\n\r\nhello";
+    uint8_t buffer1[] = "GET / HTTP/1.1\r\n: chunked\r\n\r\nhello";
     int length1 = sizeof(buffer1) - 1;
 
     pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, buffer1, length1, 8096, length1);
 
     EXPECT_TRUE(result.error);
 
-    char buffer2[] = "GET / HTTP/1.1\r\n: chunked\r\n\r\nhello";
+    uint8_t buffer2[] = "GET / HTTP/1.1\r\n: chunked\r\n\r\nhello";
     int length2 = sizeof(buffer2) - 1;
 
     result = assembler.feed(2, buffer2, length2, 8096, length2);
 
     EXPECT_TRUE(result.error);
 
-    char buffer3[] = "GET / HTTP/1.1\r\n  : chunked\r\n\r\nhello";
+    uint8_t buffer3[] = "GET / HTTP/1.1\r\n  : chunked\r\n\r\nhello";
     int length3 = sizeof(buffer3) - 1;
 
     result = assembler.feed(3, buffer3, length3, 8096, length3);
@@ -406,21 +406,21 @@ TEST(HttpParserTest, EmptyHeaderFieldName)
 TEST(HttpParserTest, EmptyHeaderFieldValue)
 {
     pulse::net::HttpAssembler assembler;
-    char buffer1[] = "GET / HTTP/1.1\r\nContent-Length:  \r\n\r\nhello";
+    uint8_t buffer1[] = "GET / HTTP/1.1\r\nContent-Length:  \r\n\r\nhello";
     int length1 = sizeof(buffer1) - 1;
 
     pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, buffer1, length1, 8096, length1);
 
     EXPECT_TRUE(result.error);
 
-    char buffer2[] = "GET / HTTP/1.1\r\nContent-Length: \r\n\r\nhello";
+    uint8_t buffer2[] = "GET / HTTP/1.1\r\nContent-Length: \r\n\r\nhello";
     int length2 = sizeof(buffer2) - 1;
 
     result = assembler.feed(2, buffer2, length2, 8096, length2);
 
     EXPECT_TRUE(result.error);
 
-    char buffer3[] = "GET / HTTP/1.1\r\nContent-Length:\r\n\r\nhello";
+    uint8_t buffer3[] = "GET / HTTP/1.1\r\nContent-Length:\r\n\r\nhello";
     int length3 = sizeof(buffer3) - 1;
 
     result = assembler.feed(3, buffer3, length3, 8096, length3);
@@ -431,7 +431,7 @@ TEST(HttpParserTest, EmptyHeaderFieldValue)
 TEST(HttpParserTest, UriTooLong)
 {
     pulse::net::HttpAssembler assembler;
-    char buffer[] = "GET /123567";
+    uint8_t buffer[] = "GET /123567";
     int length = sizeof(buffer) - 1;
 
     assembler.setMaxRequestLineLength(4);
@@ -443,8 +443,9 @@ TEST(HttpParserTest, UriTooLong)
 TEST(HttpParserTest, TotalHeaderBytesTooLong)
 {
     pulse::net::HttpAssembler assembler;
-    char buffer[] = "GET /index.html HTTP/1.1\r\nContent-length: 23\r\nTooLarge: jasdajdasjd\r\nTooLarge: "
-                    "jasdajdasjd\r\nTooLarge: jasdajdasjd\r\n";
+    uint8_t buffer[] = "GET /index.html HTTP/1.1\r\nContent-length: "
+                       "23\r\nTooLarge: jasdajdasjd\r\nTooLarge: "
+                       "jasdajdasjd\r\nTooLarge: jasdajdasjd\r\n";
     int length = sizeof(buffer) - 1;
 
     pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, buffer, length, 8096, length);
@@ -460,8 +461,8 @@ TEST(HttpParserTest, BodyTooLong)
 {
     pulse::net::HttpAssembler assembler;
 
-    char buffer[] = "GET /index.html HTTP/1.1\r\nContent-length: 9\r\n\r\n"
-                    "Too large";
+    uint8_t buffer[] = "GET /index.html HTTP/1.1\r\nContent-length: 9\r\n\r\n"
+                       "Too large";
     int length = sizeof(buffer) - 1;
 
     pulse::net::HttpAssembler::AssemblingResult result = assembler.feed(1, buffer, length, 8096, length);
@@ -481,20 +482,20 @@ TEST(HttpParserTest, ChunkedMessageMalformedChunkSize)
 {
     pulse::net::HttpAssembler assembler;
 
-    char request[] = "POST /upload HTTP/1.1\r\n"
-                     "Host: example.com\r\n"
-                     "Transfer-Encoding: chunked\r\n"
-                     "Content-Type: text/plain\r\n"
-                     "Connection: keep-alive\r\n"
-                     "\r\n"
-                     " 7K\r\n"
-                     "Mozilla\r\n"
-                     "9\r\n"
-                     "Developer\r\n"
-                     "1a\r\n"
-                     "Network and Communications\r\n"
-                     "0\r\n"
-                     "\r\n";
+    uint8_t request[] = "POST /upload HTTP/1.1\r\n"
+                        "Host: example.com\r\n"
+                        "Transfer-Encoding: chunked\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Connection: keep-alive\r\n"
+                        "\r\n"
+                        " 7K\r\n"
+                        "Mozilla\r\n"
+                        "9\r\n"
+                        "Developer\r\n"
+                        "1a\r\n"
+                        "Network and Communications\r\n"
+                        "0\r\n"
+                        "\r\n";
 
     int length = sizeof(request) - 1;
 
